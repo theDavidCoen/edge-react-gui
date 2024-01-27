@@ -44,8 +44,6 @@ export const RowUi4 = (props: Props) => {
   const { body, title, children, maximumHeight = 'medium', error, icon, loading, marginRem, onLongPress, onPress } = props
   const { rightButtonType = onLongPress == null && onPress == null ? 'none' : 'touchable' } = props
 
-  const margin = sidesToMargin(mapSides(fixSides(marginRem, 0.5), theme.rem))
-
   const numberOfLines = textHeights[maximumHeight]
 
   const handlePress = useHandler(async () => {
@@ -76,11 +74,15 @@ export const RowUi4 = (props: Props) => {
 
   const rightButtonVisible = rightButtonType !== 'none'
   const isTappable = onPress != null || onLongPress != null
+  const contentStyle = React.useMemo(
+    () => [styles.content, rightButtonVisible ? styles.tappableIconMargin : styles.fullWidth],
+    [rightButtonVisible, styles.content, styles.fullWidth, styles.tappableIconMargin]
+  )
 
   const content = (
     <>
       {icon == null ? null : icon}
-      <View style={[styles.content, rightButtonVisible ? styles.tappableIconMargin : styles.fullWidth]}>
+      <View style={contentStyle}>
         {title == null ? null : (
           <EdgeText disableFontScaling ellipsizeMode="tail" style={error ? styles.textHeaderError : styles.textHeader}>
             {title}
@@ -111,15 +113,21 @@ export const RowUi4 = (props: Props) => {
     </>
   )
 
+  const containerStyle = React.useMemo(() => {
+    const margin = sidesToMargin(mapSides(fixSides(marginRem, 0.5), theme.rem))
+
+    return [styles.container, margin]
+  }, [marginRem, theme.rem, styles.container])
+
   // The entire row dims on tap if not handled by the right action icon button.
   // TODO: If a right button is specified, onPress/onLogPress is ignored! Refine
   // API and possibly restructure JSX.
   return isTappable && !rightButtonVisible ? (
-    <TouchableOpacity style={[styles.container, margin]} accessible={false} onPress={handlePress} onLongPress={handleLongPress} disabled={loading}>
+    <TouchableOpacity style={containerStyle} accessible={false} onPress={handlePress} onLongPress={handleLongPress} disabled={loading}>
       {content}
     </TouchableOpacity>
   ) : (
-    <View style={[styles.container, margin]}>{content}</View>
+    <View style={containerStyle}>{content}</View>
   )
 }
 

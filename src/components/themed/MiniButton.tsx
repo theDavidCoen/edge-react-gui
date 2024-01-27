@@ -40,14 +40,19 @@ export function MiniButton(props: Props) {
   // Styles:
   const theme = useTheme()
   const styles = getStyles(theme)
-  const dynamicStyles = {
-    alignSelf,
-    opacity: disabled || pending ? 0.7 : 1,
-    ...sidesToMargin(mapSides(fixSides(marginRem, 0), theme.rem))
-  }
+  const dynamicStyles = React.useMemo(() => {
+    return [
+      styles.button,
+      {
+        alignSelf,
+        opacity: disabled || pending ? 0.7 : 1,
+        ...sidesToMargin(mapSides(fixSides(marginRem, 0), theme.rem))
+      }
+    ]
+  }, [alignSelf, disabled, marginRem, pending, styles.button, theme.rem])
 
   return (
-    <TouchableOpacity disabled={disabled || pending} style={[styles.button, dynamicStyles]} onPress={handlePress}>
+    <TouchableOpacity disabled={disabled || pending} style={dynamicStyles} onPress={handlePress}>
       {pending ? null : (
         <Text adjustsFontSizeToFit minimumFontScale={0.75} numberOfLines={1} style={styles.label}>
           {label}

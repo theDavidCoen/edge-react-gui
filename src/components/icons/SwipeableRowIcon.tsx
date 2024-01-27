@@ -25,7 +25,10 @@ export function SwipeableRowIcon(props: Props) {
     minWidth,
     transform: [{ scale: withTiming(isActive.value ? 1.5 : 1) }]
   }))
-  return <Animated.View style={[styles.center, style]}>{children}</Animated.View>
+
+  const viewStyle = React.useMemo(() => [styles.center, style], [style])
+
+  return <Animated.View style={viewStyle}>{children}</Animated.View>
 }
 
 const styles = StyleSheet.create({

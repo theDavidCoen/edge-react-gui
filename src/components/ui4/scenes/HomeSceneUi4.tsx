@@ -1,6 +1,6 @@
 import { asBlogPosts, BlogPost } from 'edge-info-server/types'
 import * as React from 'react'
-import { ListRenderItem, View } from 'react-native'
+import { ListRenderItem, View, ViewStyle } from 'react-native'
 import FastImage from 'react-native-fast-image'
 import Animated from 'react-native-reanimated'
 import { useSafeAreaFrame, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -32,6 +32,7 @@ import { SupportCardUi4 } from '../SupportCardUi4'
 interface Props extends EdgeSceneProps<'home'> {}
 
 const TEMP_PADDING_REM = 0.5 // To be built-in to SceneWrapper when fully UI4
+let contentContainerStyle: ViewStyle | undefined
 
 export const HomeSceneUi4 = (props: Props) => {
   const { navigation } = props
@@ -88,103 +89,110 @@ export const HomeSceneUi4 = (props: Props) => {
 
   const renderBlog: ListRenderItem<BlogPost> = useHandler(({ item }) => <BlogCard blogPost={item} />)
 
+  const buyCryptoIcon = React.useMemo(() => ({ uri: getUi4ImageUri(theme, 'cardBackgrounds/bg-buy-crypto') }), [theme])
+  const sellCryptoIcon = React.useMemo(() => ({ uri: getUi4ImageUri(theme, 'cardBackgrounds/bg-sell-crypto') }), [theme])
+  const fioIcon = React.useMemo(() => ({ uri: getUi4ImageUri(theme, 'cardBackgrounds/bg-fio') }), [theme])
+  const tradeCryptoIcon = React.useMemo(() => ({ uri: getUi4ImageUri(theme, 'cardBackgrounds/bg-trade') }), [theme])
+  const homeRowStyle = React.useMemo(() => [styles.homeRowContainer, { height: cardSize }], [styles, cardSize])
+
   return (
     <SceneWrapper hasNotifications hasTabs>
-      {({ insetStyle, undoInsetStyle }) => (
-        <>
-          <WiredProgressBar />
-          <Animated.ScrollView
-            onScroll={handleScroll}
-            style={undoInsetStyle}
-            contentContainerStyle={[{ ...insetStyle, paddingBottom: insetStyle.paddingBottom + safeAreaInsets.bottom }]}
-            scrollIndicatorInsets={SCROLL_INDICATOR_INSET_FIX}
-          >
-            <SectionView extendRight marginRem={TEMP_PADDING_REM}>
-              <>
-                <EdgeAnim enter={{ type: 'fadeInUp', distance: 140 }}>
-                  <BalanceCardUi4 onViewAssetsPress={handleViewAssetsPress} navigation={navigation} />
-                </EdgeAnim>
-                {/* Animation inside PromoCardsUi4 component */}
-                <PromoCardsUi4 navigation={navigation} screenWidth={screenWidth} />
-                <EdgeAnim style={[styles.homeRowContainer, { height: cardSize }]} enter={{ type: 'fadeInUp', distance: 80 }}>
-                  <HomeCardUi4
-                    title={lstrings.buy_crypto}
-                    footer={lstrings.buy_crypto_footer}
-                    gradientBackground={theme.buyCardGradient}
-                    nodeBackground={
-                      <View style={styles.backroundImageContainer}>
-                        <FastImage
-                          source={{ uri: getUi4ImageUri(theme, 'cardBackgrounds/bg-buy-crypto') }}
-                          style={styles.backgroundImage}
-                          resizeMode="stretch"
-                        />
-                      </View>
-                    }
-                    onPress={handleBuyPress}
-                  />
-                  <HomeCardUi4
-                    title={lstrings.sell_crypto}
-                    footer={lstrings.sell_crypto_footer}
-                    gradientBackground={theme.sellCardGradient}
-                    nodeBackground={
-                      <View style={styles.backroundImageContainer}>
-                        <FastImage
-                          source={{ uri: getUi4ImageUri(theme, 'cardBackgrounds/bg-sell-crypto') }}
-                          style={styles.backgroundImage}
-                          resizeMode="stretch"
-                        />
-                      </View>
-                    }
-                    onPress={handleSellPress}
-                  />
-                </EdgeAnim>
-                <EdgeAnim style={[styles.homeRowContainer, { height: cardSize }]} enter={{ type: 'fadeInUp', distance: 60 }}>
-                  <HomeCardUi4
-                    title={lstrings.fio_web3}
-                    footer={lstrings.fio_web3_footer}
-                    gradientBackground={theme.fioCardGradient}
-                    nodeBackground={
-                      <View style={styles.backroundImageContainer}>
-                        <FastImage source={{ uri: getUi4ImageUri(theme, 'cardBackgrounds/bg-fio') }} style={styles.backgroundImage} resizeMode="stretch" />
-                      </View>
-                    }
-                    onPress={handleFioPress}
-                  />
-                  <HomeCardUi4
-                    title={lstrings.swap_crypto}
-                    footer={lstrings.swap_crypto_footer}
-                    gradientBackground={theme.swapCardGradient}
-                    nodeBackground={
-                      <View style={styles.backroundImageContainer}>
-                        <FastImage source={{ uri: getUi4ImageUri(theme, 'cardBackgrounds/bg-trade') }} style={styles.backgroundImage} resizeMode="stretch" />
-                      </View>
-                    }
-                    onPress={handleSwapPress}
-                  />
-                </EdgeAnim>
-              </>
-              <>
-                <SectionHeaderUi4 leftTitle={lstrings.title_markets} rightNode={lstrings.see_all} onRightPress={() => navigation.navigate('coinRanking', {})} />
-                <EdgeAnim enter={{ type: 'fadeInUp', distance: 30 }}>
-                  <MarketsCardUi4 navigation={navigation} numRows={5} />
-                </EdgeAnim>
-              </>
-              {blogPosts == null || blogPosts.length === 0 ? null : (
+      {({ insetStyle, undoInsetStyle }) => {
+        // XXX Hack. To prevent re-renders, use a global object which we only
+        // set once. This will breat if undoInsetStyle or the styles object changes
+        if (contentContainerStyle == null) contentContainerStyle = { ...insetStyle, paddingBottom: insetStyle.paddingBottom + safeAreaInsets.bottom }
+        return (
+          <>
+            <WiredProgressBar />
+            <Animated.ScrollView
+              onScroll={handleScroll}
+              style={undoInsetStyle}
+              contentContainerStyle={contentContainerStyle}
+              scrollIndicatorInsets={SCROLL_INDICATOR_INSET_FIX}
+            >
+              <SectionView extendRight marginRem={TEMP_PADDING_REM}>
                 <>
-                  <SectionHeaderUi4 leftTitle={lstrings.title_learn} />
-                  <CarouselUi4 data={blogPosts} renderItem={renderBlog} height={theme.rem(13)} width={screenWidth} />
+                  <EdgeAnim enter={{ type: 'fadeInUp', distance: 140 }}>
+                    <BalanceCardUi4 onViewAssetsPress={handleViewAssetsPress} navigation={navigation} />
+                  </EdgeAnim>
+                  {/* Animation inside PromoCardsUi4 component */}
+                  <PromoCardsUi4 navigation={navigation} screenWidth={screenWidth} />
+                  <EdgeAnim style={homeRowStyle} enter={{ type: 'fadeInUp', distance: 80 }}>
+                    <HomeCardUi4
+                      title={lstrings.buy_crypto}
+                      footer={lstrings.buy_crypto_footer}
+                      gradientBackground={theme.buyCardGradient}
+                      nodeBackground={
+                        <View style={styles.backroundImageContainer}>
+                          <FastImage source={buyCryptoIcon} style={styles.backgroundImage} resizeMode="stretch" />
+                        </View>
+                      }
+                      onPress={handleBuyPress}
+                    />
+                    <HomeCardUi4
+                      title={lstrings.sell_crypto}
+                      footer={lstrings.sell_crypto_footer}
+                      gradientBackground={theme.sellCardGradient}
+                      nodeBackground={
+                        <View style={styles.backroundImageContainer}>
+                          <FastImage source={sellCryptoIcon} style={styles.backgroundImage} resizeMode="stretch" />
+                        </View>
+                      }
+                      onPress={handleSellPress}
+                    />
+                  </EdgeAnim>
+                  <EdgeAnim style={homeRowStyle} enter={{ type: 'fadeInUp', distance: 60 }}>
+                    <HomeCardUi4
+                      title={lstrings.fio_web3}
+                      footer={lstrings.fio_web3_footer}
+                      gradientBackground={theme.fioCardGradient}
+                      nodeBackground={
+                        <View style={styles.backroundImageContainer}>
+                          <FastImage source={fioIcon} style={styles.backgroundImage} resizeMode="stretch" />
+                        </View>
+                      }
+                      onPress={handleFioPress}
+                    />
+                    <HomeCardUi4
+                      title={lstrings.swap_crypto}
+                      footer={lstrings.swap_crypto_footer}
+                      gradientBackground={theme.swapCardGradient}
+                      nodeBackground={
+                        <View style={styles.backroundImageContainer}>
+                          <FastImage source={tradeCryptoIcon} style={styles.backgroundImage} resizeMode="stretch" />
+                        </View>
+                      }
+                      onPress={handleSwapPress}
+                    />
+                  </EdgeAnim>
                 </>
-              )}
-              <SupportCardUi4
-                title={lstrings.title_support}
-                body={lstrings.body_support}
-                buttonText={lstrings.button_support}
-                url={config.supportContactSite}
-              />
-            </SectionView>
-          </Animated.ScrollView>
-        </>
-      )}
+                <>
+                  <SectionHeaderUi4
+                    leftTitle={lstrings.title_markets}
+                    rightNode={lstrings.see_all}
+                    onRightPress={() => navigation.navigate('coinRanking', {})}
+                  />
+                  <EdgeAnim enter={{ type: 'fadeInUp', distance: 30 }}>
+                    <MarketsCardUi4 navigation={navigation} numRows={5} />
+                  </EdgeAnim>
+                </>
+                {blogPosts == null || blogPosts.length === 0 ? null : (
+                  <>
+                    <SectionHeaderUi4 leftTitle={lstrings.title_learn} />
+                    <CarouselUi4 data={blogPosts} renderItem={renderBlog} height={theme.rem(13)} width={screenWidth} />
+                  </>
+                )}
+                <SupportCardUi4
+                  title={lstrings.title_support}
+                  body={lstrings.body_support}
+                  buttonText={lstrings.button_support}
+                  url={config.supportContactSite}
+                />
+              </SectionView>
+            </Animated.ScrollView>
+          </>
+        )
+      }}
     </SceneWrapper>
   )
 }

@@ -20,9 +20,14 @@ const SceneHeaderComponent = (props: Props) => {
   const theme = useTheme()
   const styles = getStyles(theme)
 
+  const containerStyle = React.useMemo(
+    () => [styles.container, withTopMargin ? styles.topMargin : null, style],
+    [styles.container, style, styles.topMargin, withTopMargin]
+  )
+
   return (
     <>
-      <View style={[styles.container, withTopMargin ? styles.topMargin : null, style]}>
+      <View style={containerStyle}>
         <View style={styles.titleContainer}>
           {title == null ? null : <EdgeText style={styles.title}>{title}</EdgeText>}
           {tertiary}

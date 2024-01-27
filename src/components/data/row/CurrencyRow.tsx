@@ -7,7 +7,7 @@ import { useWalletBalance } from '../../../hooks/useWalletBalance'
 import { useWalletName } from '../../../hooks/useWalletName'
 import { lstrings } from '../../../locales/strings'
 import { useSelector } from '../../../types/reactRedux'
-import { useTheme } from '../../services/ThemeContext'
+import { cacheStyles, Theme, useTheme } from '../../services/ThemeContext'
 import { CryptoText } from '../../text/CryptoText'
 import { FiatText } from '../../text/FiatText'
 import { TickerText } from '../../text/TickerText'
@@ -31,6 +31,7 @@ const CurrencyRowComponent = (props: Props) => {
   const { pluginId } = wallet.currencyInfo
   const { showTokenNames = false } = SPECIAL_CURRENCY_INFO[pluginId] ?? {}
   const theme = useTheme()
+  const styles = getStyles(theme)
 
   // Currency code for display:
   const allTokens = wallet.currencyConfig.allTokens
@@ -46,7 +47,7 @@ const CurrencyRowComponent = (props: Props) => {
   if (compromised) {
     name = (
       <>
-        <Text style={{ color: theme.warningText }}>{lstrings.compromised_key_label}</Text> {name}
+        <Text style={styles.compromisedText}>{lstrings.compromised_key_label}</Text> {name}
       </>
     )
   }
@@ -78,3 +79,9 @@ const CurrencyRowComponent = (props: Props) => {
 }
 
 export const CurrencyRow = React.memo(CurrencyRowComponent)
+
+const getStyles = cacheStyles((theme: Theme) => ({
+  compromisedText: {
+    color: theme.warningText
+  }
+}))

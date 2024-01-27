@@ -23,10 +23,14 @@ const IconDataRowComponent = (props: Props) => {
   const { icon, leftText, leftSubtext, leftTextExtended, rightText, rightSubText, rightSubTextExtended, marginRem } = props
   const theme = useTheme()
   const styles = getStyles(theme)
-  const margin = sidesToMargin(mapSides(fixSides(marginRem, 1), theme.rem))
+
+  const containerStyle = React.useMemo(() => {
+    const margin = sidesToMargin(mapSides(fixSides(marginRem, 1), theme.rem))
+    return [styles.container, margin]
+  }, [marginRem, styles.container, theme.rem])
 
   return (
-    <View style={[styles.container, margin]}>
+    <View style={containerStyle}>
       {icon}
       <View style={styles.leftColumn}>
         <View style={styles.row}>

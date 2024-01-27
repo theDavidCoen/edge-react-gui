@@ -54,13 +54,13 @@ const CryptoIconComponent = (props: Props) => {
     const source = { uri: mono ? icon.symbolImageDarkMono : icon.symbolImage }
 
     // Return Currency logo from the edge server
-    return <FastImage style={StyleSheet.absoluteFill} source={source} />
+    return source
   }, [pluginId, tokenId, mono])
 
   // Secondary (parent) currency icon (if it's a token)
   const secondaryCurrencyIcon = React.useMemo(() => {
     if (compromised) {
-      return <FastImage source={compromisedIcon} style={styles.parentIcon} />
+      return compromisedIcon
     }
 
     // Skip if this is not a token:
@@ -73,8 +73,8 @@ const CryptoIconComponent = (props: Props) => {
     const source = { uri: mono ? icon.symbolImageDarkMono : icon.symbolImage }
 
     // Return Parent logo from the edge server
-    return <FastImage style={styles.parentIcon} source={source} />
-  }, [compromised, mono, pluginId, styles.parentIcon, tokenId])
+    return source
+  }, [compromised, mono, pluginId, tokenId])
 
   // Main view styling
   const spacingStyle = React.useMemo(
@@ -96,8 +96,8 @@ const CryptoIconComponent = (props: Props) => {
           wallet={wallet}
         />
       )}
-      {primaryCurrencyIcon}
-      {hideSecondary ? null : secondaryCurrencyIcon}
+      {primaryCurrencyIcon != null ? <FastImage style={StyleSheet.absoluteFill} source={primaryCurrencyIcon} /> : null}
+      {hideSecondary ? null : secondaryCurrencyIcon != null ? <FastImage style={styles.parentIcon} source={secondaryCurrencyIcon} /> : null}
     </View>
   )
 }

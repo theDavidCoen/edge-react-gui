@@ -1,7 +1,7 @@
 import { add } from 'biggystring'
 import { EdgeTokenId } from 'edge-core-js'
 import * as React from 'react'
-import { ActivityIndicator, View } from 'react-native'
+import { ActivityIndicator, StyleProp, View, ViewStyle } from 'react-native'
 
 import { formatNumber } from '../../locales/intl'
 import { lstrings } from '../../locales/strings'
@@ -95,7 +95,7 @@ export class CryptoExchangeFlipInputWrapperComponent extends React.Component<Pro
 
     if (this.props.isThinking) {
       return (
-        <View style={[styles.container, styles.containerNoFee, styles.containerNoWalletSelected]}>
+        <View style={styles.thinkingView}>
           <View style={styles.topRow}>
             <ActivityIndicator color={theme.iconTappable} />
           </View>
@@ -144,47 +144,58 @@ export class CryptoExchangeFlipInputWrapperComponent extends React.Component<Pro
   }
 }
 
-const getStyles = cacheStyles((theme: Theme) => ({
-  container: {
+const getStyles = cacheStyles((theme: Theme) => {
+  const container: StyleProp<ViewStyle> = {
     width: '100%'
-  },
-  containerNoFee: {
+  }
+  const containerNoFee: StyleProp<ViewStyle> = {
     backgroundColor: theme.tileBackground,
     borderRadius: 3
-  },
-  containerNoWalletSelected: {
+  }
+  const containerNoWalletSelected: StyleProp<ViewStyle> = {
     paddingVertical: theme.rem(0.75),
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center'
-  },
-  text: {
-    fontFamily: theme.fontFaceMedium,
-    fontSize: theme.rem(1),
-    marginLeft: theme.rem(0.5)
-  },
-  topRow: {
-    height: theme.rem(2),
-    flexDirection: 'column',
-    justifyContent: 'space-around',
-    alignItems: 'center'
-  },
-  iconContainer: {
-    top: theme.rem(0.125),
-    borderRadius: theme.rem(1)
-  },
-  balanceText: {
-    alignSelf: 'flex-start',
-    marginLeft: theme.rem(1),
-    color: theme.secondaryText
-  },
-  errorText: {
-    alignSelf: 'flex-start',
-    marginLeft: theme.rem(0.5),
-    marginBottom: theme.rem(0.75),
-    color: theme.dangerText
   }
-}))
+
+  return {
+    container,
+    containerNoFee,
+    containerNoWalletSelected,
+    text: {
+      fontFamily: theme.fontFaceMedium,
+      fontSize: theme.rem(1),
+      marginLeft: theme.rem(0.5)
+    },
+    topRow: {
+      height: theme.rem(2),
+      flexDirection: 'column',
+      justifyContent: 'space-around',
+      alignItems: 'center'
+    },
+    iconContainer: {
+      top: theme.rem(0.125),
+      borderRadius: theme.rem(1)
+    },
+    balanceText: {
+      alignSelf: 'flex-start',
+      marginLeft: theme.rem(1),
+      color: theme.secondaryText
+    },
+    errorText: {
+      alignSelf: 'flex-start',
+      marginLeft: theme.rem(0.5),
+      marginBottom: theme.rem(0.75),
+      color: theme.dangerText
+    },
+    thinkingView: {
+      ...container,
+      ...containerNoFee,
+      ...containerNoWalletSelected
+    }
+  }
+})
 
 export const CryptoExchangeFlipInputWrapper = connect<StateProps, {}, OwnProps>(
   (state, ownProps) => {
