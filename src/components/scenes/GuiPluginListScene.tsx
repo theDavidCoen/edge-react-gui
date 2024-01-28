@@ -395,6 +395,7 @@ class GuiPluginList extends React.PureComponent<Props, State> {
   }
 
   render() {
+    console.log('***GuiPluginList***')
     const { accountPlugins, accountReferral, countryCode, developerModeOn, disablePlugins, theme, insetStyle } = this.props
     const direction = this.getSceneDirection()
     const { buy = [], sell = [] } = this.state.buySellPlugins

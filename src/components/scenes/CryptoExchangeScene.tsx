@@ -104,7 +104,7 @@ const defaultState = {
   paddingBottom: 0
 }
 
-export class CryptoExchangeComponent extends React.Component<Props, State> {
+export class CryptoExchangeComponent extends React.PureComponent<Props, State> {
   constructor(props: Props) {
     super(props)
     // @ts-expect-error
@@ -283,6 +283,7 @@ export class CryptoExchangeComponent extends React.Component<Props, State> {
   }
 
   render() {
+    console.log('***CryptoExchangeScene***')
     const { fromWalletName, toWalletName, theme } = this.props
 
     const styles = getStyles(theme)

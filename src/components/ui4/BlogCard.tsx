@@ -19,7 +19,7 @@ const IMAGE_HEIGHT_RATIO = '65%'
 /**
  * Blog post card with a top image and text below.
  */
-export const BlogCard = (props: Props) => {
+export const BlogCard = React.memo((props: Props) => {
   console.log('****BlogCard****')
   const { localeTitle, localeBody, localeBlogUrl, lightImageUrl, darkImageUrl } = props.blogPost
 
@@ -56,7 +56,7 @@ export const BlogCard = (props: Props) => {
       </View>
     </CardUi4>
   )
-}
+})
 
 const getStyles = cacheStyles((theme: Theme) => ({
   backgroundSpacing: {

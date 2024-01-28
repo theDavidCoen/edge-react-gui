@@ -22,7 +22,8 @@ import { ButtonUi4 } from '../ui4/ButtonUi4'
 
 interface Props extends EdgeSceneProps<'walletList'> {}
 
-export function WalletListScene(props: Props) {
+export const WalletListScene = React.memo((props: Props) => {
+  console.log('****WalletListScene****')
   const { navigation } = props
   const theme = useTheme()
   const styles = getStyles(theme)
@@ -153,7 +154,7 @@ export function WalletListScene(props: Props) {
       )}
     </SceneWrapper>
   )
-}
+})
 
 const getStyles = cacheStyles((theme: Theme) => ({
   sortFooterContainer: {

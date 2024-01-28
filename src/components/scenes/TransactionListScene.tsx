@@ -47,6 +47,7 @@ interface Props extends EdgeSceneProps<'transactionList'> {
 }
 
 function TransactionListComponent(props: Props) {
+  console.log('****TransactionList****')
   const { navigation, route, wallet } = props
   const theme = useTheme()
   const styles = getStyles(theme)
@@ -343,7 +344,7 @@ function checkToken(tokenId: EdgeTokenId, allTokens: EdgeTokenMap): EdgeTokenId 
   return tokenId
 }
 
-export const TransactionList = withWallet(TransactionListComponent)
+export const TransactionList = React.memo(withWallet(TransactionListComponent))
 
 const getStyles = cacheStyles(() => ({
   flatList: {
