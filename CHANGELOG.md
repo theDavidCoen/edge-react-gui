@@ -4,6 +4,7 @@
 
 - added: Notification status analytics param
 - added: @bugsnag/react-native-performance
+- added: Cosmos IBC transfer plugin
 - fixed: Some text inputs not selectable for some Samsung devices
 
 ## 4.1.0
