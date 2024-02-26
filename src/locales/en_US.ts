@@ -865,7 +865,7 @@ const strings = {
   choose_your_wallet: 'Choose Your Wallet',
   error_creating_wallets:
     'Network timeout occurred trying to create and backup wallets. Please check your network connection and restart app to retry wallet creation.',
-  error_must_select_state_province: 'Must select state/province for %s',
+  error_must_select_state_province_s: 'Must select state/province for %1$s',
   edge_login_failed: 'Failed to Login',
   edge_login_fail_stale_qr: 'The scanned QR code was invalid. \n\nPlease generate a new QR code on the device you intend to log in to and try again.',
   edge_login_fail_message: 'Could not connect to network. Please check your network connection and try again.',

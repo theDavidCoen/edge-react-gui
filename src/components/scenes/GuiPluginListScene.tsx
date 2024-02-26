@@ -335,7 +335,7 @@ class GuiPluginList extends React.PureComponent<Props, State> {
             <StateProvinceListModal countryCode={selectedCountryCode} bridge={bridge} stateProvince={previousStateProvince} stateProvinces={stateProvinces} />
           ))
           if (selectedStateProvince == null) {
-            throw new Error(sprintf(lstrings.error_must_select_state_province, name))
+            throw new Error(sprintf(lstrings.error_must_select_state_province_s, name))
           }
         }
         const syncedSettings = await readSyncedSettings(account)
