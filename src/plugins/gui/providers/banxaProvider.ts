@@ -24,7 +24,7 @@ import {
   FiatProviderSupportedRegions
 } from '../fiatProviderTypes'
 import { addTokenToArray } from '../util/providerUtils'
-import { filterRegions, NOT_SUCCESS_TOAST_HIDE_MS, RETURN_URL_CANCEL, RETURN_URL_FAIL, RETURN_URL_SUCCESS } from './common'
+import { NOT_SUCCESS_TOAST_HIDE_MS, RETURN_URL_CANCEL, RETURN_URL_FAIL, RETURN_URL_SUCCESS, validateRegion } from './common'
 const providerId = 'banxa'
 const storeId = 'banxa'
 const partnerIcon = 'banxa.png'
@@ -375,7 +375,7 @@ export const banxaProvider: FiatProviderFactory = {
       partnerIcon,
       pluginDisplayName,
       getSupportedAssets: async ({ direction, paymentTypes, regionCode }): Promise<FiatProviderAssetMap> => {
-        filterRegions(providerId, regionCode, SUPPORTED_REGIONS)
+        validateRegion(providerId, regionCode, SUPPORTED_REGIONS)
 
         // Return nothing if paymentTypes are not supported by this provider
         if (!paymentTypes.some(paymentType => allowedPaymentTypes[direction][paymentType] === true))
@@ -430,7 +430,7 @@ export const banxaProvider: FiatProviderFactory = {
       },
       getQuote: async (params: FiatProviderGetQuoteParams): Promise<FiatProviderQuote> => {
         const { pluginId, regionCode, exchangeAmount, amountType, paymentTypes, fiatCurrencyCode, displayCurrencyCode, direction, tokenId } = params
-        filterRegions(providerId, regionCode, SUPPORTED_REGIONS)
+        validateRegion(providerId, regionCode, SUPPORTED_REGIONS)
 
         if (!paymentTypes.some(paymentType => allowedPaymentTypes[direction][paymentType] === true))
           throw new FiatProviderError({ providerId, errorType: 'paymentUnsupported' })

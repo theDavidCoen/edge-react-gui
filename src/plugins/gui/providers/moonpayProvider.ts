@@ -17,7 +17,7 @@ import {
   FiatProviderSupportedRegions
 } from '../fiatProviderTypes'
 import { addTokenToArray } from '../util/providerUtils'
-import { filterRegions } from './common'
+import { validateRegion } from './common'
 const providerId = 'moonpay'
 const storeId = 'com.moonpay'
 const partnerIcon = 'moonpay_symbol_prp.png'
@@ -138,7 +138,7 @@ export const moonpayProvider: FiatProviderFactory = {
       partnerIcon,
       pluginDisplayName,
       getSupportedAssets: async ({ direction, paymentTypes, regionCode }): Promise<FiatProviderAssetMap> => {
-        filterRegions(providerId, regionCode, SUPPORTED_REGIONS[direction])
+        validateRegion(providerId, regionCode, SUPPORTED_REGIONS[direction])
         if (direction !== 'buy') {
           throw new FiatProviderError({ providerId, errorType: 'paymentUnsupported' })
         }
@@ -197,7 +197,7 @@ export const moonpayProvider: FiatProviderFactory = {
       },
       getQuote: async (params: FiatProviderGetQuoteParams): Promise<FiatProviderQuote> => {
         const { direction, regionCode, paymentTypes, displayCurrencyCode } = params
-        filterRegions(providerId, regionCode, SUPPORTED_REGIONS[direction])
+        validateRegion(providerId, regionCode, SUPPORTED_REGIONS[direction])
         if (direction !== 'buy') {
           throw new FiatProviderError({ providerId, errorType: 'paymentUnsupported' })
         }

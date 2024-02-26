@@ -17,7 +17,7 @@ import {
   FiatProviderSupportedRegions
 } from '../fiatProviderTypes'
 import { addTokenToArray } from '../util/providerUtils'
-import { filterRegions } from './common'
+import { validateRegion } from './common'
 const providerId = 'simplex'
 const storeId = 'co.edgesecure.simplex'
 const partnerIcon = 'simplex-logo-sm-square.png'
@@ -206,7 +206,7 @@ export const simplexProvider: FiatProviderFactory = {
       partnerIcon,
       pluginDisplayName,
       getSupportedAssets: async ({ direction, regionCode, paymentTypes }): Promise<FiatProviderAssetMap> => {
-        filterRegions(providerId, regionCode, SUPPORTED_REGIONS)
+        validateRegion(providerId, regionCode, SUPPORTED_REGIONS)
         if (direction !== 'buy') {
           throw new FiatProviderError({ providerId, errorType: 'paymentUnsupported' })
         }
@@ -240,7 +240,7 @@ export const simplexProvider: FiatProviderFactory = {
       },
       getQuote: async (params: FiatProviderGetQuoteParams): Promise<FiatProviderQuote> => {
         const { direction, regionCode, exchangeAmount, amountType, paymentTypes, displayCurrencyCode } = params
-        filterRegions(providerId, regionCode, SUPPORTED_REGIONS)
+        validateRegion(providerId, regionCode, SUPPORTED_REGIONS)
         if (direction !== 'buy') {
           throw new FiatProviderError({ providerId, errorType: 'paymentUnsupported' })
         }

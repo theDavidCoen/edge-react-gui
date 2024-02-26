@@ -23,7 +23,7 @@ import {
 } from '../fiatProviderTypes'
 import { assert, isWalletTestnet } from '../pluginUtils'
 import { addTokenToArray } from '../util/providerUtils'
-import { filterRegions, NOT_SUCCESS_TOAST_HIDE_MS, RETURN_URL_FAIL, RETURN_URL_PAYMENT, RETURN_URL_SUCCESS } from './common'
+import { NOT_SUCCESS_TOAST_HIDE_MS, RETURN_URL_FAIL, RETURN_URL_PAYMENT, RETURN_URL_SUCCESS, validateRegion } from './common'
 const providerId = 'paybis'
 const storeId = 'paybis'
 const partnerIcon = 'paybis.png'
@@ -316,7 +316,7 @@ export const paybisProvider: FiatProviderFactory = {
       partnerIcon,
       pluginDisplayName,
       getSupportedAssets: async ({ direction, paymentTypes, regionCode }): Promise<FiatProviderAssetMap> => {
-        filterRegions(providerId, regionCode, SUPPORTED_REGIONS)
+        validateRegion(providerId, regionCode, SUPPORTED_REGIONS)
         // Return nothing if paymentTypes are not supported by this provider
         const paymentType = paymentTypes.find(paymentType => allowedPaymentTypes[direction][paymentType] === true)
         if (paymentType == null) throw new FiatProviderError({ providerId, errorType: 'paymentUnsupported' })
@@ -355,7 +355,7 @@ export const paybisProvider: FiatProviderFactory = {
           direction,
           tokenId
         } = params
-        filterRegions(providerId, regionCode, SUPPORTED_REGIONS)
+        validateRegion(providerId, regionCode, SUPPORTED_REGIONS)
         const paymentType = paymentTypes.find(paymentType => allowedPaymentTypes[direction][paymentType] === true)
         if (paymentType == null) throw new FiatProviderError({ providerId, errorType: 'paymentUnsupported' })
 
