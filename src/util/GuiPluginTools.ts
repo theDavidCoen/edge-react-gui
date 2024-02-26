@@ -30,16 +30,12 @@ export function filterGuiPluginJson(
       const enableStateProvinces = forStateProvinces != null ? forStateProvinces[countryCode] : undefined
       const disableStateProvinces = notStateProvinces != null ? notStateProvinces[countryCode] : undefined
       // If this plugin has no stateProvinces, assume it accepts them all
-      if (enableStateProvinces != null) {
-        if (!enableStateProvinces?.some(sp => sp === stateProvinceCode)) {
-          continue
-        }
+      if (enableStateProvinces?.some(sp => sp === stateProvinceCode) === false) {
+        continue
       }
 
-      if (disableStateProvinces != null) {
-        if (disableStateProvinces?.some(sp => sp === stateProvinceCode)) {
-          continue
-        }
+      if (disableStateProvinces?.some(sp => sp === stateProvinceCode) === true) {
+        continue
       }
     }
 
