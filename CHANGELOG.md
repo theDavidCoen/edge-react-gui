@@ -5,7 +5,9 @@
 - added: Notification status analytics param
 - added: @bugsnag/react-native-performance
 - changed: Remove extra spaces and normal capitalization of mnemonic seed input
+- added: Have users select US state and filter fiat providers by state/province
 - fixed: Some text inputs not selectable for some Samsung devices
+- fixed: Various small visual fixes
 
 ## 4.1.0
 
@@ -34,6 +36,7 @@
 - fixed: Make FilledTextInputs take up constant vertical space
 - fixed: Send Recipient Address Modal styling when saved recipients are shown
 - fixed: Minor Transaction List spacing adjustments
+- fixed: Insufficient Funds error in Thorchain unstaking
 - removed: swipeLastUsp experiment (always allow swipes on the last USP)
 
 ## 4.0.2 (2024-02-13)
