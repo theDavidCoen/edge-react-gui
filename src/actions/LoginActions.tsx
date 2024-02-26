@@ -53,8 +53,10 @@ export function initializeAccount(navigation: NavigationBase, account: EdgeAccou
     const syncedSettings = await readSyncedSettings(account)
     const { walletsSort } = syncedSettings
     dispatch({ type: 'LOGIN', data: { account, walletSort: walletsSort } })
-    await dispatch(loadAccountReferral(account))
-    const newAccount = account.newAccount
+    const { newAccount } = account
+    if (newAccount) {
+      await dispatch(loadAccountReferral(account))
+    }
 
     if (newAccount) {
       let { defaultFiat } = syncedSettings
