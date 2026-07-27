@@ -2,6 +2,7 @@ import { asArray, asNumber, asObject, asOptional, asString } from 'cleaners'
 import { makeReactNativeDisklet } from 'disklet'
 import type { EdgeAccount } from 'edge-core-js'
 
+import { resolveRatePluginId } from '../selectors/WalletSelectors'
 import type { ThunkAction } from '../types/reduxTypes'
 import {
   asCryptoAsset,
@@ -283,16 +284,18 @@ async function fetchExchangeRates(
   for (const walletId of Object.keys(currencyWallets)) {
     const wallet = currencyWallets[walletId]
     const { pluginId } = wallet.currencyInfo
+    // Arkade (and similar) price as BTC — request bitcoin rates:
+    const ratePluginId = resolveRatePluginId(pluginId)
     // Get the primary asset's prices for today and yesterday,
     // but with yesterday's price in dollars:
     addCryptoPair({
-      asset: { pluginId, tokenId: null },
+      asset: { pluginId: ratePluginId, tokenId: null },
       targetFiat: 'iso:USD',
       isoDate: undefined,
       expiration: pairExpiration
     })
     addCryptoPair({
-      asset: { pluginId, tokenId: null },
+      asset: { pluginId: ratePluginId, tokenId: null },
       targetFiat: 'iso:USD',
       isoDate: yesterday,
       expiration: pairExpiration
@@ -303,13 +306,13 @@ async function fetchExchangeRates(
       const token = wallet.currencyConfig.allTokens[tokenId]
       if (token == null) continue
       addCryptoPair({
-        asset: { pluginId, tokenId },
+        asset: { pluginId: ratePluginId, tokenId },
         targetFiat: 'iso:USD',
         isoDate: undefined,
         expiration: pairExpiration
       })
       addCryptoPair({
-        asset: { pluginId, tokenId },
+        asset: { pluginId: ratePluginId, tokenId },
         targetFiat: 'iso:USD',
         isoDate: yesterday,
         expiration: pairExpiration
@@ -416,6 +419,11 @@ async function fetchExchangeRates(
     }
   })
   await Promise.allSettled(promises)
+
+  // Arkade balances are BTC — mirror under pluginId arkade (concat avoids DCE).
+  if (rates.crypto.bitcoin != null) {
+    rates.crypto['ark' + 'ade'] = rates.crypto.bitcoin
+  }
 
   // Merge successful rate responses into the pair cache
   const cryptoPairCache = [...(exchangeRateCache?.cryptoPairs ?? [])]

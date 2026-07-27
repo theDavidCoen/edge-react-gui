@@ -28,7 +28,10 @@ import { useReverseName } from '../../hooks/useReverseName'
 import { formatNumber } from '../../locales/intl'
 import { lstrings } from '../../locales/strings'
 import { getExchangeDenom } from '../../selectors/DenominationSelectors'
-import { getExchangeRate } from '../../selectors/WalletSelectors'
+import {
+  ARKADE_PLUGIN_ID,
+  getExchangeRate
+} from '../../selectors/WalletSelectors'
 import { useSelector } from '../../types/reactRedux'
 import type { NavigationBase } from '../../types/routerTypes'
 import {
@@ -219,9 +222,14 @@ const TransactionViewInner: React.FC<TransactionViewInnerProps> = props => {
   // Pending Text and Style
   const timeText = unixToLocaleDateTime(transaction.date).time
   const confirmationText = getConfirmationText(currencyInfo, transaction)
-
+  const arkadeStatus = (
+    transaction.otherParams as { arkadeStatus?: string } | null
+  )?.arkadeStatus
   const confirmationStyle =
-    transaction.confirmations === 'confirmed'
+    confirmationText == null ||
+    (transaction.confirmations === 'confirmed' &&
+      arkadeStatus !== 'preconfirmed' &&
+      arkadeStatus !== 'boarding_pending')
       ? null
       : transaction.confirmations === 'failed'
       ? styles.failedText
@@ -470,6 +478,29 @@ function getConfirmationText(
   currencyInfo: EdgeCurrencyInfo,
   transaction: EdgeTransaction
 ): string | undefined {
+  // Arkade: map protocol states to UI labels (docs: preconfirmed vs settled;
+  // Pending only for unconfirmed boarding / onchain). Lightning receives are
+  // offchain Ark txs — show Preconfirmed until settled=true (next batch).
+  // Do NOT treat confirmations==='confirmed' as settled (engine uses that for
+  // preconfirmed too, to avoid Syncing...).
+  if (currencyInfo.pluginId === ARKADE_PLUGIN_ID) {
+    const status = (transaction.otherParams as { arkadeStatus?: string } | null)
+      ?.arkadeStatus
+    // Mempool boarding → Pending (same as Edge unconfirmed).
+    if (status === 'pending_boarding') {
+      return lstrings.fragment_wallet_unconfirmed
+    }
+    // Onchain-confirmed boarding awaiting Ark batch → Pending boarding.
+    if (status === 'boarding_pending') {
+      return lstrings.fragment_transaction_list_tx_pending_boarding
+    }
+    if (status === 'settled') {
+      return
+    }
+    // preconfirmed, or missing status on an Arkade tx → Preconfirmed
+    return lstrings.fragment_transaction_list_tx_preconfirmed
+  }
+
   // Default requiredConfirmations to 1, so once the transaction is in a block consider fully confirmed
   // Default canReplaceByFee to false, so we don't show the RBF message unless the currencyInfo has it set.
   const { canReplaceByFee = false, requiredConfirmations = 1 } = currencyInfo

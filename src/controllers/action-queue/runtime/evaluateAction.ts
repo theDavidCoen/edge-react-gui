@@ -6,6 +6,7 @@ import type {
   BorrowPlugin
 } from '../../../plugins/borrow-plugins/types'
 import { queryBorrowPlugins } from '../../../plugins/helpers/borrowPluginHelpers'
+import { aliasArkadeSwapRequest } from '../../../util/arkade'
 import { getOrCreateLoanAccount } from '../../loan-manager/redux/actions'
 import { waitForBorrowEngineSync } from '../../loan-manager/util/waitForLoanAccountSync'
 import type {
@@ -328,14 +329,16 @@ export async function evaluateAction(
         throw new Error(`Wallet '${toWalletId}' not found for toWalletId`)
 
       const execute = async (): Promise<ExecutionOutput> => {
-        const swapQuote = await account.fetchSwapQuote({
-          fromWallet,
-          toWallet,
-          fromTokenId,
-          toTokenId,
-          nativeAmount,
-          quoteFor: amountFor
-        })
+        const swapQuote = await account.fetchSwapQuote(
+          aliasArkadeSwapRequest({
+            fromWallet,
+            toWallet,
+            fromTokenId,
+            toTokenId,
+            nativeAmount,
+            quoteFor: amountFor
+          })
+        )
         const swapResult = await swapQuote.approve()
         const { transaction } = swapResult
         const { swapData } = transaction

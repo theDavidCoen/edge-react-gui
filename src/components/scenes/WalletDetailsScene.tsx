@@ -90,6 +90,11 @@ const WalletDetailsComponent: React.FC<Props> = (props: Props) => {
     tokenId == null
       ? wallet.currencyInfo
       : wallet.currencyConfig.allTokens[tokenId]
+  // Chart / coingecko is about the asset (BTC), not the chain (Arkade).
+  const assetTitle =
+    tokenId == null
+      ? wallet.currencyInfo.assetDisplayName ?? displayName
+      : displayName
 
   const educationCards = React.useMemo(() => {
     const key = `${pluginId}${tokenId == null ? '' : `_${tokenId}`}`
@@ -407,7 +412,7 @@ const WalletDetailsComponent: React.FC<Props> = (props: Props) => {
           />
           {assetId != null && (
             <SectionHeaderUi4
-              leftTitle={displayName}
+              leftTitle={assetTitle}
               rightNode={lstrings.coin_rank_see_more}
               onRightPress={handlePressCoinRanking}
             />

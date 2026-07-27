@@ -412,7 +412,7 @@ export default [
       'src/controllers/action-queue/ActionQueueStore.ts',
       'src/controllers/action-queue/cleaners.ts',
       'src/controllers/action-queue/push.ts',
-      'src/controllers/action-queue/runtime/evaluateAction.ts',
+
       'src/controllers/action-queue/runtime/executeActionProgram.ts',
       'src/controllers/edgeProvider/client/edgeProviderBridge.ts',
       'src/controllers/edgeProvider/client/pendingList.ts',
@@ -431,7 +431,7 @@ export default [
       'src/hooks/useExperimentConfig.ts',
       'src/hooks/useFilter.ts',
       'src/hooks/useHistoricalRate.ts',
-      'src/hooks/useIconColor.ts',
+
       'src/hooks/useIsAccountFunded.ts',
       'src/hooks/useLayout.ts',
       'src/hooks/useLayoutOnce.ts',
@@ -501,8 +501,6 @@ export default [
       'src/util/cryptoTextUtils.ts',
       'src/util/CurrencyInfoHelpers.ts',
       'src/util/CurrencyWalletHelpers.ts',
-
-      'src/util/exchangeRates.ts',
 
       'src/util/FioAddressUtils.ts',
       'src/util/getAccountUsername.ts',

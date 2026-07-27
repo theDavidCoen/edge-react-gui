@@ -92,11 +92,11 @@ android {
 
     namespace "co.edgesecure.app"
     defaultConfig {
-        applicationId "co.edgesecure.app"
+        applicationId "app.edge.grana"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 21000000
-        versionName "99.99.99"
+        versionCode 26072701
+        versionName "4.50.0"
 
         // Edge addition:
         multiDexEnabled true
@@ -172,6 +172,19 @@ dependencies {
 // ---------------------------------------------------------------------
 // Edge additions
 // ---------------------------------------------------------------------
+
+// Allow local/demo builds with custom applicationId (ex: "app.edge.grana")
+// even if `google-services.json` doesn't contain a matching Firebase client.
+afterEvaluate {
+    if (android.defaultConfig.applicationId == "app.edge.grana") {
+        tasks.matching { it.name == "processDebugGoogleServices" }.configureEach {
+            enabled = false
+        }
+        tasks.matching { it.name == "processReleaseGoogleServices" }.configureEach {
+            enabled = false
+        }
+    }
+}
 
 // Specify signing properties on the command line:
 if (hasProperty('storeFile')) {

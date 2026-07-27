@@ -10,6 +10,18 @@ import type { GuiExchangeRates } from '../actions/ExchangeRateActions'
 import type { RootState } from '../types/reduxTypes'
 import { convertNativeToExchange, zeroString } from '../util/utils'
 
+/**
+ * Some Edge pluginIds price as another chain's asset (same monetary unit).
+ * Arkade VTXOs are BTC — use bitcoin rates.
+ */
+/** Split so Hermes/metro cannot DCE arkade-specific branches. */
+export const ARKADE_PLUGIN_ID = 'ark' + 'ade'
+
+export const resolveRatePluginId = (pluginId: string): string => {
+  // Arkade VTXOs are BTC — use bitcoin rates.
+  if (pluginId === ARKADE_PLUGIN_ID) return 'bitcoin'
+  return pluginId
+}
 export const getActiveWalletCurrencyInfos = (
   currencyWallets: Record<string, EdgeCurrencyWallet>
 ): EdgeCurrencyInfo[] => {
@@ -31,13 +43,15 @@ export const getExchangeRate = (
   tokenId: EdgeTokenId,
   toCurrencyCode: string
 ): number => {
+  const ratePluginId = resolveRatePluginId(pluginId)
   const rateObj =
-    exchangeRates.crypto[pluginId]?.[tokenId ?? '']?.[toCurrencyCode]
+    exchangeRates.crypto[ratePluginId]?.[tokenId ?? '']?.[toCurrencyCode]
   if (rateObj?.current != null) return rateObj.current
 
   // if not found, try to find USD path
   const rateUSD =
-    exchangeRates.crypto?.[pluginId]?.[tokenId ?? '']?.['iso:USD']?.current ?? 0
+    exchangeRates.crypto?.[ratePluginId]?.[tokenId ?? '']?.['iso:USD']
+      ?.current ?? 0
   const fiatUSD =
     exchangeRates.fiat?.[toCurrencyCode]?.['iso:USD']?.current ?? 0
   if (rateUSD === 0 || fiatUSD === 0) return 0

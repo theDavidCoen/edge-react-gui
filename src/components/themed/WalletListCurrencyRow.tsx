@@ -168,7 +168,8 @@ const WalletListCurrencyRowComponent = (
       <View style={styles.rowContainer}>
         <View style={styles.networkContainer}>
           <EdgeText style={styles.networkLabelText}>
-            {wallet.currencyInfo.displayName}
+            {wallet.currencyInfo.chainDisplayName ??
+              wallet.currencyInfo.displayName}
           </EdgeText>
         </View>
         <EdgeText style={styles.titleRightText}>{cryptoText}</EdgeText>

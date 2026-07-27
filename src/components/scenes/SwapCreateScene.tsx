@@ -7,7 +7,8 @@ import {
   asMaybeSwapPermissionError,
   type EdgeCurrencyWallet,
   type EdgeSwapRequest,
-  type EdgeTokenId
+  type EdgeTokenId,
+  SwapCurrencyError
 } from 'edge-core-js'
 import * as React from 'react'
 import { useState } from 'react'
@@ -23,6 +24,7 @@ import { useWatch } from '../../hooks/useWatch'
 import { lstrings } from '../../locales/strings'
 import { useDispatch, useSelector } from '../../types/reactRedux'
 import type { NavigationBase, SwapTabSceneProps } from '../../types/routerTypes'
+import { getSwapWalletPluginId } from '../../util/arkade'
 import { getCurrencyCode } from '../../util/CurrencyInfoHelpers'
 import { getWalletName } from '../../util/CurrencyWalletHelpers'
 import { zeroString } from '../../util/utils'
@@ -196,11 +198,10 @@ export const SwapCreateScene: React.FC<Props> = props => {
 
   const checkDisableAsset = (
     disableAssets: DisableAsset[],
-    walletId: string,
+    wallet: EdgeCurrencyWallet,
     tokenId: EdgeTokenId
   ): boolean => {
-    const wallet = currencyWallets[walletId] ?? { currencyInfo: {} }
-    const walletPluginId = wallet.currencyInfo.pluginId
+    const walletPluginId = getSwapWalletPluginId(wallet)
     const walletTokenId = tokenId
     for (const disableAsset of disableAssets) {
       const { pluginId, tokenId } = disableAsset
@@ -231,7 +232,7 @@ export const SwapCreateScene: React.FC<Props> = props => {
     if (exchangeInfo != null) {
       const disableSrc = checkDisableAsset(
         exchangeInfo.swap.disableAssets.source,
-        swapRequest.fromWallet.id,
+        swapRequest.fromWallet,
         fromTokenId
       )
       if (disableSrc) {
@@ -247,7 +248,7 @@ export const SwapCreateScene: React.FC<Props> = props => {
 
       const disableDest = checkDisableAsset(
         exchangeInfo.swap.disableAssets.destination,
-        swapRequest.toWallet.id,
+        swapRequest.toWallet,
         toTokenId
       )
       if (disableDest) {
@@ -274,6 +275,35 @@ export const SwapCreateScene: React.FC<Props> = props => {
         navigation.goBack()
       },
       onDone: quotes => {
+        if (!Array.isArray(quotes) || quotes.length === 0) {
+          const error = new SwapCurrencyError(
+            {
+              pluginId: 'swap',
+              displayName: 'Swap',
+              supportEmail: ''
+            },
+            swapRequest
+          )
+          navigation.navigate('swapTab', {
+            screen: 'swapCreate',
+            params: {
+              fromWalletId: swapRequest.fromWallet.id,
+              fromTokenId: swapRequest.fromTokenId,
+              toWalletId: swapRequest.toWallet.id,
+              toTokenId: swapRequest.toTokenId,
+              errorDisplayInfo: {
+                title: lstrings.exchange_generic_error_title,
+                message: sprintf(
+                  lstrings.ss_unable,
+                  fromCurrencyCode,
+                  toCurrencyCode
+                ),
+                error
+              }
+            }
+          })
+          return
+        }
         navigation.replace('swapConfirmation', {
           selectedQuote: quotes[0],
           quotes,

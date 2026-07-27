@@ -5,13 +5,20 @@ import FastImage from 'react-native-fast-image'
 import { ShadowedView } from 'react-native-fast-shadow'
 
 import customAssetIcon from '../../assets/images/custom-asset.png'
+import arkadeNetworkIcon from '../../assets/images/networks/arkade-badge-purple.png'
 import { SPECIAL_CURRENCY_INFO } from '../../constants/WalletAndCurrencyConstants'
 import { useHandler } from '../../hooks/useHandler'
+import { ARKADE_PLUGIN_ID } from '../../selectors/WalletSelectors'
 import { useSelector } from '../../types/reactRedux'
 import { getCurrencyIconUris } from '../../util/CdnUris'
 import { fixSides, mapSides, sidesToMargin } from '../../util/sides'
 import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
 import { UnscaledText } from '../text/UnscaledText'
+
+/** Local network badges (pluginId → require). Keys built at runtime to avoid Hermes DCE. */
+const LOCAL_NETWORK_BADGES: Record<string, number> = {
+  [ARKADE_PLUGIN_ID]: arkadeNetworkIcon
+}
 
 export interface CryptoIconProps {
   // Main props - If non is specified, would just render an empty view
@@ -52,9 +59,17 @@ export const CryptoIcon: React.FC<CryptoIconProps> = (
 
   const { pluginId } = props
   const useChainIcon = SPECIAL_CURRENCY_INFO[pluginId]?.showChainIcon ?? false
+  const localNetworkBadge =
+    tokenId == null ? LOCAL_NETWORK_BADGES[pluginId] : undefined
+  const isArkadeNative = pluginId === ARKADE_PLUGIN_ID && tokenId == null
 
   // Primary Currency icon
-  const icon = getCurrencyIconUris(pluginId, tokenId, useChainIcon)
+  // Arkade is a BTC L2: use bitcoin CDN icons as primary (content.edge.app has
+  // no arkade/… assets), with the Arkade media-kit mark as the network badge.
+  const icon =
+    localNetworkBadge != null && isArkadeNative
+      ? getCurrencyIconUris('bitcoin', null, false)
+      : getCurrencyIconUris(pluginId, tokenId, useChainIcon)
   const primaryCurrencyIconUrl = mono
     ? icon.symbolImageDarkMono
     : icon.symbolImage
@@ -65,14 +80,28 @@ export const CryptoIcon: React.FC<CryptoIconProps> = (
     setLoadError(false)
   }, [primaryCurrencyIconUrl])
 
-  // Secondary (parent) currency icon (if it's a token)
+  // Secondary (parent) currency icon (if it's a token / L2 chain badge)
   let secondaryCurrencyIcon = secondaryIconOverride
-  if (secondaryIconOverride == null && (tokenId != null || useChainIcon)) {
-    const icon = getCurrencyIconUris(pluginId, null)
+  if (secondaryCurrencyIcon == null && localNetworkBadge != null) {
+    secondaryCurrencyIcon = localNetworkBadge
+  } else if (
+    secondaryIconOverride == null &&
+    (tokenId != null || useChainIcon)
+  ) {
+    const parentIcon = getCurrencyIconUris(pluginId, null)
     secondaryCurrencyIcon = {
-      uri: mono ? icon.symbolImageDarkMono : icon.symbolImage
+      uri: mono ? parentIcon.symbolImageDarkMono : parentIcon.symbolImage
     }
   }
+
+  // Reset secondary load error when the badge source changes
+  const secondaryUri =
+    typeof secondaryCurrencyIcon === 'object' && secondaryCurrencyIcon != null
+      ? secondaryCurrencyIcon.uri
+      : secondaryCurrencyIcon
+  React.useEffect(() => {
+    setSecondaryLoadError(false)
+  }, [secondaryUri])
 
   const shadowStyle = React.useMemo(
     () => ({

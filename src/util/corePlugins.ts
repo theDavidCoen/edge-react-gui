@@ -2,6 +2,17 @@ import type { EdgeCorePluginsInit } from 'edge-core-js'
 
 import { ENV } from '../env'
 
+const hasSwapKitV2Config =
+  ENV.SWAPKIT_INIT !== false &&
+  typeof ENV.SWAPKIT_INIT === 'object' &&
+  ((ENV.SWAPKIT_INIT.thorswapApiKey ?? '') !== '' ||
+    (ENV.SWAPKIT_INIT.thorswapXApiKey ?? '') !== '')
+
+const hasSwapKitV3Config =
+  ENV.SWAPKITV3_INIT !== false &&
+  typeof ENV.SWAPKITV3_INIT === 'object' &&
+  (ENV.SWAPKITV3_INIT.thorswapApiKey ?? '') !== ''
+
 export const currencyPlugins: EdgeCorePluginsInit = {
   // edge-currency-accountbased:
   abstract: ENV.ABSTRACT_INIT,
@@ -63,7 +74,8 @@ export const currencyPlugins: EdgeCorePluginsInit = {
   zano: true,
   zcash: true,
   zksync: ENV.ZKSYNC_INIT,
-  // edge-currency-bitcoin:
+  // edge-currency-plugins (UTXO + Arkade):
+  arkade: true,
   bitcoin: ENV.BITCOIN_INIT,
   bitcoincash: ENV.BITCOINCASH_INIT,
   bitcoincashtestnet: false,
@@ -109,8 +121,8 @@ export const swapPlugins = {
   spookySwap: false,
   mayaprotocol: ENV.MAYA_PROTOCOL_INIT,
   thorchain: ENV.THORCHAIN_INIT,
-  swapkit: ENV.SWAPKIT_INIT,
-  swapkitv3: ENV.SWAPKITV3_INIT,
+  swapkit: hasSwapKitV2Config ? ENV.SWAPKIT_INIT : false,
+  swapkitv3: hasSwapKitV3Config ? ENV.SWAPKITV3_INIT : false,
   tombSwap: ENV.TOMB_SWAP_INIT,
   unizen: false,
   velodrome: true,

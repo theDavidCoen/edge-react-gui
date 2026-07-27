@@ -167,6 +167,7 @@
   "fragment_wallet_unconfirmed": "In sospeso",
   "fragment_transaction_list_tx_dropped": "Saltata",
   "fragment_transaction_list_tx_failed": "Non riuscito",
+  "fragment_transaction_list_tx_preconfirmed": "Preconfirmed",
   "fragment_transaction_list_tx_synchronizing": "Sincronizzazione...",
   "fragment_transaction_list_confirmation_progress": "%s di %s conferme",
   "fragment_transaction_list_unconfirmed_rbf2": "In attesa di conferma, potrebbe venire annullata",
@@ -1991,5 +1992,8 @@
   "ramp_account_number_label": "Numero del conto",
   "ramp_routing_number_label": "Routing Number",
   "ramp_bank_routing_warning": "Assicurati che tutti i dettagli siano corretti prima di effettuare il trasferimento.",
-  "unknown_error_message": "Si è verificato un errore sconosciuto."
+  "unknown_error_message": "Si è verificato un errore sconosciuto.",
+  "request_qr_your_arkade_address": "Il tuo indirizzo Arkade",
+  "request_qr_your_boarding_address": "Il tuo indirizzo Bitcoin (boarding)",
+  "request_qr_your_lnurl_address": "Il tuo LNURL"
 }

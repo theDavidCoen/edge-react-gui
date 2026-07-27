@@ -156,9 +156,22 @@ export const AddressTile2 = React.forwardRef(
     const canSelfTransfer: boolean = Object.keys(currencyWallets).some(
       walletId => {
         if (walletId === coreWallet.id) return false
-        if (currencyWallets[walletId].type !== coreWallet.type) return false
-        if (tokenId == null) return true
-        return currencyWallets[walletId].enabledTokenIds.includes(tokenId)
+        const other = currencyWallets[walletId]
+        if (other.type === coreWallet.type) {
+          if (tokenId == null) return true
+          return other.enabledTokenIds.includes(tokenId)
+        }
+        // Arkade ↔ Bitcoin: collaborative exit (Ark→BTC) or boarding deposit (BTC→Ark).
+        if (tokenId != null) return false
+        const sourcePluginId = coreWallet.currencyInfo.pluginId
+        const otherPluginId = other.currencyInfo.pluginId
+        if (sourcePluginId === 'ark' + 'ade' && otherPluginId === 'bitcoin') {
+          return true
+        }
+        if (sourcePluginId === 'bitcoin' && otherPluginId === 'ark' + 'ade') {
+          return true
+        }
+        return false
       }
     )
 
@@ -445,17 +458,27 @@ export const AddressTile2 = React.forwardRef(
     const handleSelfTransfer = useHandler(() => {
       const { currencyWallets } = account
       const { pluginId } = coreWallet.currencyInfo
+      const arkadePluginId = 'ark' + 'ade'
+      let allowedAssets = [{ pluginId, tokenId }]
+      if (pluginId === arkadePluginId) {
+        // Arkade → Bitcoin collaborative exit, plus other Arkade wallets.
+        allowedAssets = [
+          { pluginId, tokenId },
+          { pluginId: 'bitcoin', tokenId: null }
+        ]
+      } else if (pluginId === 'bitcoin' && tokenId == null) {
+        // Bitcoin → Arkade boarding (bc1p), plus other Bitcoin wallets.
+        allowedAssets = [
+          { pluginId, tokenId },
+          { pluginId: arkadePluginId, tokenId: null }
+        ]
+      }
       Airship.show<WalletListResult>(bridge => (
         <WalletListModal
           bridge={bridge}
           headerTitle={lstrings.your_wallets}
           navigation={navigation}
-          allowedAssets={[
-            {
-              pluginId,
-              tokenId
-            }
-          ]}
+          allowedAssets={allowedAssets}
           excludeWalletIds={[coreWallet.id]}
         />
       ))
@@ -463,11 +486,31 @@ export const AddressTile2 = React.forwardRef(
           if (result?.type !== 'wallet') return
           const { walletId } = result
           const wallet = currencyWallets[walletId]
+          const targetPluginId = wallet.currencyInfo.pluginId
 
-          // Prefer segwit address if the selected wallet has one
           const { segwitAddress, publicAddress } =
             await wallet.getReceiveAddress({ tokenId: null })
-          const address = segwitAddress ?? publicAddress
+
+          let address: string
+          if (targetPluginId === arkadePluginId) {
+            if (pluginId === 'bitcoin') {
+              // BTC → Arkade must use boarding/onchain (bc1p), never ark1.
+              const addrs = await wallet.getAddresses({ tokenId: null })
+              const boarding = addrs.find(
+                a =>
+                  a.addressType === 'boardingAddress' ||
+                  a.addressType === 'segwitAddress'
+              )
+              address =
+                boarding?.publicAddress ?? segwitAddress ?? publicAddress
+            } else {
+              // Arkade → Arkade: instant ark1
+              address = publicAddress
+            }
+          } else {
+            // Bitcoin (and others): prefer native segwit / public receive
+            address = segwitAddress ?? publicAddress
+          }
           await changeAddress(address, 'other')
         })
         .catch((err: unknown) => {

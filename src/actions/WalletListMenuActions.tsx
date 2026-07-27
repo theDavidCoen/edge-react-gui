@@ -374,6 +374,7 @@ export function walletListMenuAction(
           <EditWalletSettingsModal
             bridge={bridge}
             wallet={wallet}
+            navigation={navigation}
             onNavigate={navigationPath => {
               if (navigationPath === 'currencySettings') {
                 navigation.navigate('currencySettings', {

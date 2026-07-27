@@ -22,6 +22,7 @@ import { useDispatch, useSelector } from '../../types/reactRedux'
 import type { ThunkAction } from '../../types/reduxTypes'
 import type { SwapTabSceneProps } from '../../types/routerTypes'
 import type { GuiSwapInfo } from '../../types/types'
+import { restoreSwapQuotesForUi } from '../../util/arkade'
 import { getSwapPluginIconUri } from '../../util/CdnUris'
 import { CryptoAmount } from '../../util/CryptoAmount'
 import { logActivity } from '../../util/logger'
@@ -71,7 +72,7 @@ interface Section {
 
 export const SwapConfirmationScene: React.FC<Props> = (props: Props) => {
   const { route, navigation } = props
-  const { quotes, onApprove } = route.params
+  const { onApprove } = route.params
 
   const dispatch = useDispatch()
   const theme = useTheme()
@@ -80,16 +81,10 @@ export const SwapConfirmationScene: React.FC<Props> = (props: Props) => {
   const account = useSelector(state => state.core.account)
   const defaultIsoFiat = useSelector(state => state.ui.settings.defaultIsoFiat)
   const exchangeRates = useSelector(state => state.exchangeRates)
-  const feeFiat = useSelector(state =>
-    selectedQuote == null
-      ? '0'
-      : convertCurrency(
-          state.exchangeRates,
-          selectedQuote.pluginId,
-          selectedQuote.networkFee.tokenId,
-          state.ui.settings.defaultIsoFiat,
-          selectedQuote.networkFee.nativeAmount
-        )
+
+  const quotes = React.useMemo(
+    () => restoreSwapQuotesForUi(route.params.quotes, account),
+    [account, route.params.quotes]
   )
 
   const [pending, setPending] = useState(false)
@@ -118,10 +113,25 @@ export const SwapConfirmationScene: React.FC<Props> = (props: Props) => {
     return pickBestQuote(allQuotes)
   }
 
-  const [selectedQuote, setSelectedQuote] = useState(
-    pickBestQuoteWithPreference(quotes)
-  )
+  const [selectedQuote, setSelectedQuote] = useState(() => {
+    const initial =
+      route.params.selectedQuote != null
+        ? restoreSwapQuotesForUi([route.params.selectedQuote], account)[0]
+        : undefined
+    if (initial != null) return initial
+    return pickBestQuoteWithPreference(quotes)
+  })
   const [calledApprove, setCalledApprove] = useState(false)
+
+  const feeFiat = useSelector(state =>
+    convertCurrency(
+      state.exchangeRates,
+      selectedQuote.pluginId,
+      selectedQuote.networkFee.tokenId,
+      state.ui.settings.defaultIsoFiat,
+      selectedQuote.networkFee.nativeAmount
+    )
+  )
 
   const { request } = selectedQuote
   const { quoteFor } = request
@@ -220,10 +230,12 @@ export const SwapConfirmationScene: React.FC<Props> = (props: Props) => {
       onCancel: () => {
         navigation.navigate('swapTab', { screen: 'swapCreate' })
       },
-      onDone: quotes => {
+      onDone: refreshedQuotes => {
+        const normalized = restoreSwapQuotesForUi(refreshedQuotes, account)
+        if (normalized.length === 0) return
         navigation.replace('swapConfirmation', {
-          selectedQuote: quotes[0],
-          quotes,
+          selectedQuote: normalized[0],
+          quotes: normalized,
           onApprove
         })
       }
@@ -692,8 +704,14 @@ const getBetterQuoteRate = (
 }
 
 export const pickBestQuote = (quotes: EdgeSwapQuote[]): EdgeSwapQuote => {
+  if (!Array.isArray(quotes) || quotes.length === 0) {
+    throw new Error('Expected at least one swap quote')
+  }
+  if (quotes.length === 1) return quotes[0]
+
   const best = quotes.reduce((bestQuote, quote) => {
     const { swapInfo, isEstimate } = quote
+    if (swapInfo == null) return bestQuote
     const { isDex = false } = swapInfo
     const { isEstimate: isBestQuoteEstimate } = bestQuote
     const isBestQuoteDex = bestQuote.swapInfo.isDex === true

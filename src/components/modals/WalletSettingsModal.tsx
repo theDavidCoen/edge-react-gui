@@ -11,14 +11,16 @@ import {
 } from '../../constants/WalletAndCurrencyConstants'
 import { useHandler } from '../../hooks/useHandler'
 import { lstrings } from '../../locales/strings'
+import type { NavigationBase } from '../../types/routerTypes'
 import { asMoneroUserSettings } from '../../util/monero'
 import { ModalButtons } from '../buttons/ModalButtons'
 import { EdgeCard } from '../cards/EdgeCard'
-import { showError } from '../services/AirshipInstance'
+import { Airship, showError } from '../services/AirshipInstance'
 import { SettingsHeaderRow } from '../settings/SettingsHeaderRow'
 import { SettingsRadioRow } from '../settings/SettingsRadioRow'
 import { SettingsTappableRow } from '../settings/SettingsTappableRow'
 import { ModalFilledTextInput } from '../themed/FilledTextInput'
+import { ArkadeUnilateralExitModal } from './ArkadeUnilateralExitModal'
 import { EdgeModal } from './EdgeModal'
 
 export interface WalletSettingsResult {
@@ -29,6 +31,8 @@ export interface WalletSettingsResult {
 interface Props {
   bridge: AirshipBridge<WalletSettingsResult | undefined>
   onNavigate?: (navigationPath: string) => void
+  /** Passed through for Unilateral Exit → Select Wallet (Airship has no nav). */
+  navigation?: NavigationBase
   pluginId: string
   initialName: string
   initialSettings: Record<string, string>
@@ -41,8 +45,15 @@ interface EditWalletSettingsProps
 }
 
 export const WalletSettingsModal: React.FC<Props> = props => {
-  const { bridge, initialSettings, onNavigate, initialName, wallet, pluginId } =
-    props
+  const {
+    bridge,
+    initialSettings,
+    onNavigate,
+    navigation,
+    initialName,
+    wallet,
+    pluginId
+  } = props
 
   const walletSettings: WalletSetting[] = React.useMemo(
     () => SPECIAL_CURRENCY_INFO[pluginId]?.walletSettings ?? [],
@@ -149,6 +160,22 @@ export const WalletSettingsModal: React.FC<Props> = props => {
     onNavigate?.('currencySettings')
   })
 
+  const handleArkadeExit = useHandler((): void => {
+    if (wallet == null) return
+    // Keep Wallet Settings open underneath; exit modal stacks on Airship.
+    Airship.show<boolean>(exitBridge => (
+      <ArkadeUnilateralExitModal
+        bridge={exitBridge}
+        wallet={wallet}
+        navigation={navigation}
+      />
+    )).catch((error: unknown) => {
+      showError(error)
+    })
+  })
+
+  const showArkadeExit = wallet != null && pluginId === 'ark' + 'ade'
+
   return (
     <EdgeModal
       bridge={bridge}
@@ -196,12 +223,20 @@ export const WalletSettingsModal: React.FC<Props> = props => {
         </View>
       ))}
 
-      {showAssetSettingsCard ? (
+      {showAssetSettingsCard || showArkadeExit ? (
         <EdgeCard sections>
-          <SettingsTappableRow
-            label={lstrings.settings_asset_settings}
-            onPress={handleAssetSettingsPress}
-          />
+          {showAssetSettingsCard ? (
+            <SettingsTappableRow
+              label={lstrings.settings_asset_settings}
+              onPress={handleAssetSettingsPress}
+            />
+          ) : null}
+          {showArkadeExit ? (
+            <SettingsTappableRow
+              label={lstrings.arkade_exit_row}
+              onPress={handleArkadeExit}
+            />
+          ) : null}
         </EdgeCard>
       ) : null}
 

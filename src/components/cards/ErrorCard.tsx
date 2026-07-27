@@ -113,9 +113,13 @@ export const ErrorCard: React.FC<Props> = props => {
         ? errorIdentifier.eventId
         : errorIdentifier.aggregateId
       : ''
+  const detailMessage =
+    error instanceof Error && error.message !== ''
+      ? error.message
+      : lstrings.error_generic_message
   const bodyText = reportSent
     ? `${lstrings.string_report_sent}\n\n${idLabel}: ${idValue}`
-    : lstrings.error_generic_message
+    : detailMessage
 
   // Unhappy path
   return (

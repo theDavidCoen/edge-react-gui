@@ -11,6 +11,7 @@ import {
 import type { EdgeFetchFunction, EdgeTokenId } from 'edge-core-js'
 
 import { showError } from '../components/services/AirshipInstance'
+import { resolveRatePluginId } from '../selectors/WalletSelectors'
 import { fetchRates } from './network'
 import { removeIsoPrefix } from './utils'
 
@@ -127,7 +128,7 @@ const doQuery = async (doFetch?: EdgeFetchFunction): Promise<void> => {
 
               clog(`${n} deleting ${key}`)
               resolverMap.delete(key)
-              if (resolvers.length) {
+              if (resolvers.length > 0) {
                 resolvers.forEach((r, i) => {
                   r(rate)
                 })
@@ -163,7 +164,7 @@ const doQuery = async (doFetch?: EdgeFetchFunction): Promise<void> => {
 
               clog(`${n} deleting ${key}`)
               resolverMap.delete(key)
-              if (resolvers.length) {
+              if (resolvers.length > 0) {
                 resolvers.forEach((r, i) => {
                   r(rate)
                 })
@@ -205,7 +206,7 @@ const addToQueue = (
   resolve: Function,
   maxQuerySize: number,
   doFetch?: EdgeFetchFunction
-) => {
+): void => {
   const rateKeyResolver = resolverMap.get(rateKey)
   if (rateKeyResolver == null) {
     // Create a new entry in the map for this pair/date
@@ -259,7 +260,13 @@ export const getHistoricalCryptoRate = async (
   maxQuerySize: number = RATES_SERVER_MAX_QUERY_SIZE,
   doFetch?: EdgeFetchFunction
 ): Promise<number> => {
-  const rateKey = createRateKey({ pluginId, tokenId }, targetFiat, date)
+  // Arkade VTXOs are BTC — rates server has no arkade pluginId.
+  const ratePluginId = resolveRatePluginId(pluginId)
+  const rateKey = createRateKey(
+    { pluginId: ratePluginId, tokenId },
+    targetFiat,
+    date
+  )
 
   return await getHistoricalRate(
     {
@@ -267,7 +274,7 @@ export const getHistoricalCryptoRate = async (
       crypto: [
         {
           isoDate: new Date(date),
-          asset: { pluginId, tokenId },
+          asset: { pluginId: ratePluginId, tokenId },
           rate: undefined
         }
       ],

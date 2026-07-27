@@ -39,6 +39,7 @@ export const CURRENCY_SETTINGS_KEYS = [
   'abstract',
   'amoy',
   'arbitrum',
+  'arkade',
   'avalanche',
   'axelar',
   'base',
@@ -309,7 +310,19 @@ export const SPECIAL_CURRENCY_INFO: Record<string, SpecialCurrencyInfo> = {
     displayIoniaRewards: true,
     isImportKeySupported: true,
     isStakingSupported: true,
-    unstoppableDomainsTicker: 'BTC'
+    unstoppableDomainsTicker: 'BTC',
+    // CAIP-2 bip122 mainnet genesis hash prefix (see caip19Utils BIP122_GENESIS)
+    walletConnectV2ChainId: {
+      namespace: 'bip122',
+      reference: '000000000019d6689c085ae165831e93'
+    }
+  },
+  arkade: {
+    maxSpendTargets: UTXO_MAX_SPEND_TARGETS,
+    initWalletName: 'My Bitcoin (Arkade)',
+    isImportKeySupported: true,
+    // BTC L2 style: primary BTC icon + Arkade network badge (see CryptoIcon)
+    showChainIcon: true
   },
   bitcointestnet: {
     hasSegwit: true,

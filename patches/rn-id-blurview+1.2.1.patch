@@ -10,7 +10,7 @@ index 3c57d16..affdb09 100644
 +    implementation 'com.github.Dimezis:BlurView:version-2.0.6'
  }
 diff --git a/node_modules/rn-id-blurview/android/src/main/java/com/blurview/BlurViewModule.java b/node_modules/rn-id-blurview/android/src/main/java/com/blurview/BlurViewModule.java
-index 8de862a..85a71f7 100644
+index 8de862a..2f836ce 100644
 --- a/node_modules/rn-id-blurview/android/src/main/java/com/blurview/BlurViewModule.java
 +++ b/node_modules/rn-id-blurview/android/src/main/java/com/blurview/BlurViewModule.java
 @@ -14,7 +14,6 @@ import java.util.Objects;
@@ -21,7 +21,16 @@ index 8de862a..85a71f7 100644
  
  @SuppressWarnings("unused")
  class BlurViewManager extends ViewGroupManager<BlurView> {
-@@ -37,7 +36,6 @@ class BlurViewManager extends ViewGroupManager<BlurView> {
+@@ -22,6 +21,8 @@ class BlurViewManager extends ViewGroupManager<BlurView> {
+ 
+     private static final int defaultRadius = 10;
+     private static final int defaultSampling = 10;
++    private static final int minRadius = 1;
++    private static final int maxRadius = 25;
+ 
+     @Override
+     public @Nonnull String getName() {
+@@ -37,7 +38,6 @@ class BlurViewManager extends ViewGroupManager<BlurView> {
  
          blurView.setupWith(rootView)
                  .setFrameClearDrawable(windowBackground)
@@ -29,8 +38,18 @@ index 8de862a..85a71f7 100644
                  .setBlurRadius(defaultRadius)
                  .setBlurAutoUpdate(true);
          return blurView;
+@@ -45,7 +45,8 @@ class BlurViewManager extends ViewGroupManager<BlurView> {
+ 
+     @ReactProp(name = "blurRadius", defaultInt = defaultRadius)
+     public void setRadius(BlurView view, int radius) {
+-        view.setBlurRadius(radius);
++        int safeRadius = Math.max(minRadius, Math.min(maxRadius, radius));
++        view.setBlurRadius(safeRadius);
+         view.invalidate();
+     }
+ 
 diff --git a/node_modules/rn-id-blurview/android/src/main/java/com/rn/blurview/BlurViewManager.java b/node_modules/rn-id-blurview/android/src/main/java/com/rn/blurview/BlurViewManager.java
-index 1b4893f..e9db7a0 100644
+index 1b4893f..7935bed 100644
 --- a/node_modules/rn-id-blurview/android/src/main/java/com/rn/blurview/BlurViewManager.java
 +++ b/node_modules/rn-id-blurview/android/src/main/java/com/rn/blurview/BlurViewManager.java
 @@ -13,7 +13,6 @@ import java.util.Objects;
@@ -41,7 +60,16 @@ index 1b4893f..e9db7a0 100644
  
  @SuppressWarnings("unused")
  class BlurViewManager extends ViewGroupManager<BlurView> {
-@@ -36,7 +35,6 @@ class BlurViewManager extends ViewGroupManager<BlurView> {
+@@ -21,6 +20,8 @@ class BlurViewManager extends ViewGroupManager<BlurView> {
+ 
+     private static final int defaultRadius = 10;
+     private static final int defaultSampling = 10;
++    private static final int minRadius = 1;
++    private static final int maxRadius = 25;
+ 
+     @Override
+     public @Nonnull String getName() {
+@@ -36,7 +37,6 @@ class BlurViewManager extends ViewGroupManager<BlurView> {
  
          blurView.setupWith(rootView)
                  .setFrameClearDrawable(windowBackground)
@@ -49,8 +77,18 @@ index 1b4893f..e9db7a0 100644
                  .setBlurRadius(defaultRadius)
                  .setBlurAutoUpdate(true);
          return blurView;
+@@ -44,7 +44,8 @@ class BlurViewManager extends ViewGroupManager<BlurView> {
+ 
+     @ReactProp(name = "blurRadius", defaultInt = defaultRadius)
+     public void setRadius(BlurView view, int radius) {
+-        view.setBlurRadius(radius);
++        int safeRadius = Math.max(minRadius, Math.min(maxRadius, radius));
++        view.setBlurRadius(safeRadius);
+         view.invalidate();
+     }
+ 
 diff --git a/node_modules/rn-id-blurview/src/BlurView.android.tsx b/node_modules/rn-id-blurview/src/BlurView.android.tsx
-index 02a29c1..b637bcd 100644
+index 02a29c1..7e96301 100644
 --- a/node_modules/rn-id-blurview/src/BlurView.android.tsx
 +++ b/node_modules/rn-id-blurview/src/BlurView.android.tsx
 @@ -27,7 +27,7 @@ interface AndroidProps extends ViewProps {
@@ -62,7 +100,35 @@ index 02a29c1..b637bcd 100644
    const blurType: AndroidBlurType = ['light', 'xlight', 'dark'].includes(props.blurType) ? props.blurType as AndroidBlurType : 'dark';
  
    useEffect(() => {
-@@ -91,11 +91,6 @@ export const BlurView = (props: PropsWithChildren<AndroidProps>) => {
+@@ -48,24 +48,17 @@ export const BlurView = (props: PropsWithChildren<AndroidProps>) => {
+ 
+   const blurRadius = useMemo(() => {
+     const {blurRadius, blurAmount} = props;
++    const clampRadius = (radius: number) => Math.max(1, Math.min(25, Math.round(radius)));
+ 
+     if (blurRadius != null) {
+-      if (blurRadius > 25) {
+-        throw new Error(
+-          `[ReactNativeBlur]: blurRadius cannot be greater than 25! (was: ${blurRadius})`,
+-        );
+-      }
+-      return blurRadius;
++      return clampRadius(blurRadius);
+     }
+ 
+     // iOS seems to use a slightly different blurring algorithm (or scale?).
+     // Android blurRadius + downsampleFactor is approximately 80% of blurAmount.
+     const equivalentBlurRadius = Math.round(blurAmount * 0.8);
+ 
+-    if (equivalentBlurRadius > 25) {
+-      return 25;
+-    }
+-    return equivalentBlurRadius;
++    return clampRadius(equivalentBlurRadius);
+     }, []);
+ 
+   const downsampleFactor: number = useMemo(() => {
+@@ -91,11 +84,6 @@ export const BlurView = (props: PropsWithChildren<AndroidProps>) => {
      );
  }
  

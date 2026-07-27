@@ -201,27 +201,42 @@ export class RequestSceneComponent extends React.Component<
       // Zcash
       saplingAddress: lstrings.request_qr_your_sapling_address,
       transparentAddress: lstrings.request_qr_your_transparent_address,
-      unifiedAddress: lstrings.request_qr_your_unified_address
+      unifiedAddress: lstrings.request_qr_your_unified_address,
+
+      // Arkade (concat so Hermes cannot DCE the pluginId check)
+      publicAddress:
+        wallet.currencyInfo.pluginId === 'ark' + 'ade'
+          ? lstrings.request_qr_your_arkade_address
+          : lstrings.request_qr_your_wallet_address,
+      boardingAddress: lstrings.request_qr_your_boarding_address,
+      lnurlAddress: lstrings.request_qr_your_lnurl_address
     }
 
     const allAddresses = await wallet.getAddresses({ tokenId: null })
-    const hasSegwitAddress = allAddresses.some(
-      address => address.addressType === 'segwitAddress'
-    )
-    const addresses: AddressInfo[] = allAddresses.map(edgeAddress => {
-      let label: string = lstrings.request_qr_your_wallet_address
+    const isArkade = wallet.currencyInfo.pluginId === 'ark' + 'ade'
+    const hasSegwitAddress =
+      !isArkade &&
+      allAddresses.some(address => address.addressType === 'segwitAddress')
+    const addresses: AddressInfo[] = allAddresses
+      // Avoid listing boarding twice (boardingAddress + segwitAddress alias).
+      .filter(
+        edgeAddress =>
+          !(isArkade && edgeAddress.addressType === 'segwitAddress')
+      )
+      .map(edgeAddress => {
+        let label: string = lstrings.request_qr_your_wallet_address
 
-      if (hasSegwitAddress && edgeAddress.addressType === 'publicAddress') {
-        label = lstrings.request_qr_your_wrapped_segwit_address
-      } else if (addressTypeLabelMap[edgeAddress.addressType] != null) {
-        label = addressTypeLabelMap[edgeAddress.addressType]
-      }
+        if (hasSegwitAddress && edgeAddress.addressType === 'publicAddress') {
+          label = lstrings.request_qr_your_wrapped_segwit_address
+        } else if (addressTypeLabelMap[edgeAddress.addressType] != null) {
+          label = addressTypeLabelMap[edgeAddress.addressType]
+        }
 
-      return {
-        addressString: edgeAddress.publicAddress,
-        label
-      }
-    })
+        return {
+          addressString: edgeAddress.publicAddress,
+          label
+        }
+      })
 
     this.setState({ addresses, selectedAddress: addresses[0] })
   }

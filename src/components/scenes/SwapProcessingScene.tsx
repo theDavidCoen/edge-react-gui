@@ -9,7 +9,8 @@ import {
   type EdgeDenomination,
   type EdgeSwapQuote,
   type EdgeSwapRequest,
-  type EdgeSwapRequestOptions
+  type EdgeSwapRequestOptions,
+  SwapCurrencyError
 } from 'edge-core-js'
 import * as React from 'react'
 import { sprintf } from 'sprintf-js'
@@ -18,6 +19,10 @@ import { useDisplayDenom } from '../../hooks/useDisplayDenom'
 import { lstrings } from '../../locales/strings'
 import { useSelector } from '../../types/reactRedux'
 import type { NavigationBase, SwapTabSceneProps } from '../../types/routerTypes'
+import {
+  aliasArkadeSwapRequest,
+  restoreSwapQuotesForUi
+} from '../../util/arkade'
 import { getCurrencyCode } from '../../util/CurrencyInfoHelpers'
 import { getWalletName } from '../../util/CurrencyWalletHelpers'
 import { convertNativeToDisplay, zeroString } from '../../util/utils'
@@ -52,13 +57,25 @@ export const SwapProcessingScene: React.FC<Props> = (props: Props) => {
     swapRequest.toWallet.currencyConfig,
     swapRequest.toTokenId
   )
-
   const doWork = async (isCancelled: () => boolean): Promise<void> => {
-    const quotes = await account.fetchSwapQuotes(
-      swapRequest,
-      swapRequestOptions
+    const quotes = restoreSwapQuotesForUi(
+      await account.fetchSwapQuotes(
+        aliasArkadeSwapRequest(swapRequest),
+        swapRequestOptions
+      ),
+      account
     )
     if (isCancelled()) return
+    if (quotes.length === 0) {
+      throw new SwapCurrencyError(
+        {
+          pluginId: 'swap',
+          displayName: 'Swap',
+          supportEmail: ''
+        },
+        swapRequest
+      )
+    }
     onDone(quotes)
   }
 
@@ -280,6 +297,17 @@ function processSwapQuoteError({
             currentCurrencyDenomination.name
           )
         : lstrings.no_amount_above_limit,
+      error
+    }
+  }
+
+  if (
+    error instanceof Error &&
+    /SettlementMinExpiryGap|expiry too far in the future/i.test(error.message)
+  ) {
+    return {
+      title: lstrings.exchange_generic_error_title,
+      message: error.message,
       error
     }
   }
