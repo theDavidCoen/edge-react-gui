@@ -36,8 +36,70 @@ export const ARKADE_PLUGIN_ID = 'ark' + 'ade'
 const BITCOIN_PLUGIN_ID = 'bitcoin'
 const BITCOIN_WALLET_TYPE = 'wallet:bitcoin'
 
-const isArkadeWallet = (wallet: EdgeCurrencyWallet): boolean =>
-  wallet.currencyInfo.pluginId === ARKADE_PLUGIN_ID
+export interface ArkadeOnchainSwapEligibility {
+  eligible: boolean
+  code: string
+  message: string
+}
+
+export class ArkadeOnchainSwapIneligibleError extends Error {
+  readonly code: string
+
+  constructor(message: string, code: string) {
+    super(message)
+    this.name = 'ArkadeOnchainSwapIneligibleError'
+    this.code = code
+  }
+}
+
+export const isArkadeWallet = (wallet: {
+  currencyInfo: { pluginId: string }
+}): boolean => wallet.currencyInfo.pluginId === ARKADE_PLUGIN_ID
+
+export const isArkadeOnchainSwapIneligibleError = (
+  error: unknown
+): error is ArkadeOnchainSwapIneligibleError =>
+  error instanceof ArkadeOnchainSwapIneligibleError
+
+/**
+ * Arkade → other asset swaps need an onchain BTC leg.
+ * Engine prefers Boltz ARK→BTC (Arkade Wallet); settles via ASP only as fallback.
+ */
+export const checkArkadeOnchainSwapEligibility = async (
+  wallet: EdgeCurrencyWallet,
+  nativeAmount?: string
+): Promise<ArkadeOnchainSwapEligibility> => {
+  const otherMethods = wallet.otherMethods as {
+    arkadeCheckOnchainSwapEligibility?: (params?: {
+      nativeAmount?: string
+    }) => Promise<ArkadeOnchainSwapEligibility>
+  }
+
+  if (otherMethods.arkadeCheckOnchainSwapEligibility == null) {
+    return {
+      eligible: true,
+      code: 'ok',
+      message: ''
+    }
+  }
+
+  return await otherMethods.arkadeCheckOnchainSwapEligibility({
+    nativeAmount
+  })
+}
+
+export const assertArkadeOnchainSwapEligible = async (
+  wallet: EdgeCurrencyWallet,
+  nativeAmount?: string
+): Promise<void> => {
+  const result = await checkArkadeOnchainSwapEligibility(wallet, nativeAmount)
+  if (!result.eligible) {
+    throw new ArkadeOnchainSwapIneligibleError(result.message, result.code)
+  }
+}
+
+const isArkadeWalletInternal = (wallet: EdgeCurrencyWallet): boolean =>
+  isArkadeWallet(wallet)
 
 export const getSwapWalletPluginId = (wallet: {
   currencyInfo: { pluginId: string }
@@ -78,7 +140,7 @@ const normalizeSwapAddresses = (addresses: EdgeAddress[]): EdgeAddress[] => {
 const makeSwapWalletAlias = (
   wallet: EdgeCurrencyWallet
 ): EdgeCurrencyWallet => {
-  if (!isArkadeWallet(wallet)) return wallet
+  if (!isArkadeWalletInternal(wallet)) return wallet
 
   const aliasedCurrencyInfo = makeSwapCurrencyInfo(wallet.currencyInfo)
   const aliasedCurrencyConfig = {

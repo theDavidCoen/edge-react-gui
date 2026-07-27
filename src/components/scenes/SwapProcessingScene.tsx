@@ -21,6 +21,10 @@ import { useSelector } from '../../types/reactRedux'
 import type { NavigationBase, SwapTabSceneProps } from '../../types/routerTypes'
 import {
   aliasArkadeSwapRequest,
+  ArkadeOnchainSwapIneligibleError,
+  checkArkadeOnchainSwapEligibility,
+  isArkadeOnchainSwapIneligibleError,
+  isArkadeWallet,
   restoreSwapQuotesForUi
 } from '../../util/arkade'
 import { getCurrencyCode } from '../../util/CurrencyInfoHelpers'
@@ -58,14 +62,37 @@ export const SwapProcessingScene: React.FC<Props> = (props: Props) => {
     swapRequest.toTokenId
   )
   const doWork = async (isCancelled: () => boolean): Promise<void> => {
+    const fromWallet =
+      account.currencyWallets[swapRequest.fromWallet.id] ??
+      swapRequest.fromWallet
+
+    if (isArkadeWallet(fromWallet)) {
+      const nativeAmount =
+        swapRequest.quoteFor === 'max' ? undefined : swapRequest.nativeAmount
+      const eligibility = await checkArkadeOnchainSwapEligibility(
+        fromWallet,
+        nativeAmount
+      )
+      if (!eligibility.eligible) {
+        throw new ArkadeOnchainSwapIneligibleError(
+          eligibility.message,
+          eligibility.code
+        )
+      }
+    }
+
+    const aliased = aliasArkadeSwapRequest(swapRequest)
+    console.warn(
+      `[arkade swap] requesting quotes aliasFrom=${aliased.fromWallet.currencyInfo.pluginId} aliasTo=${aliased.toWallet.currencyInfo.pluginId} typeFrom=${aliased.fromWallet.type} amount=${swapRequest.nativeAmount}`
+    )
     const quotes = restoreSwapQuotesForUi(
-      await account.fetchSwapQuotes(
-        aliasArkadeSwapRequest(swapRequest),
-        swapRequestOptions
-      ),
+      await account.fetchSwapQuotes(aliased, swapRequestOptions),
       account
     )
     if (isCancelled()) return
+    console.warn(
+      `[arkade swap] fetchSwapQuotes returned ${quotes.length} quote(s) from=${swapRequest.fromWallet.currencyInfo.pluginId} to=${swapRequest.toWallet.currencyInfo.pluginId} amount=${swapRequest.nativeAmount}`
+    )
     if (quotes.length === 0) {
       throw new SwapCurrencyError(
         {
@@ -297,6 +324,18 @@ function processSwapQuoteError({
             currentCurrencyDenomination.name
           )
         : lstrings.no_amount_above_limit,
+      error
+    }
+  }
+
+  // Arkade VTXO → onchain preflight (SettlementMinExpiryGap, etc.)
+  if (isArkadeOnchainSwapIneligibleError(error)) {
+    return {
+      title:
+        error.code === 'settlement_min_expiry_gap'
+          ? lstrings.arkade_swap_settlement_min_expiry_gap_title
+          : lstrings.arkade_swap_onchain_unavailable_title,
+      message: error.message,
       error
     }
   }

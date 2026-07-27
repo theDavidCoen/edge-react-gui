@@ -443,7 +443,7 @@ export default [
       'src/hooks/useTokenDisplayData.ts',
       'src/hooks/useTransactionList.ts',
       'src/hooks/useUnmount.ts',
-      'src/hooks/useWalletConnect.tsx',
+
       'src/hooks/useWalletsSubscriber.ts',
       'src/hooks/useWhyDidYouUpdate.ts',
       'src/locales/intl.ts',

@@ -24,7 +24,14 @@ import { useWatch } from '../../hooks/useWatch'
 import { lstrings } from '../../locales/strings'
 import { useDispatch, useSelector } from '../../types/reactRedux'
 import type { NavigationBase, SwapTabSceneProps } from '../../types/routerTypes'
-import { getSwapWalletPluginId } from '../../util/arkade'
+import {
+  type ArkadeOnchainSwapEligibility,
+  ArkadeOnchainSwapIneligibleError,
+  checkArkadeOnchainSwapEligibility,
+  getSwapWalletPluginId,
+  isArkadeOnchainSwapIneligibleError,
+  isArkadeWallet
+} from '../../util/arkade'
 import { getCurrencyCode } from '../../util/CurrencyInfoHelpers'
 import { getWalletName } from '../../util/CurrencyWalletHelpers'
 import { zeroString } from '../../util/utils'
@@ -48,7 +55,12 @@ import {
   WalletListModal,
   type WalletListResult
 } from '../modals/WalletListModal'
-import { Airship, showToast, showWarning } from '../services/AirshipInstance'
+import {
+  Airship,
+  showError,
+  showToast,
+  showWarning
+} from '../services/AirshipInstance'
 import { useTheme } from '../services/ThemeContext'
 import { UnscaledText } from '../text/UnscaledText'
 import { LineTextDivider } from '../themed/LineTextDivider'
@@ -75,6 +87,17 @@ export interface SwapErrorDisplayInfo {
   title: string
   error: unknown
 }
+
+const buildArkadeSwapErrorDisplay = (
+  result: ArkadeOnchainSwapEligibility
+): SwapErrorDisplayInfo => ({
+  title:
+    result.code === 'settlement_min_expiry_gap'
+      ? lstrings.arkade_swap_settlement_min_expiry_gap_title
+      : lstrings.arkade_swap_onchain_unavailable_title,
+  message: result.message,
+  error: new ArkadeOnchainSwapIneligibleError(result.message, result.code)
+})
 
 interface Props extends SwapTabSceneProps<'swapCreate'> {}
 
@@ -151,6 +174,31 @@ export const SwapCreateScene: React.FC<Props> = props => {
     })
   }, [dispatch, navigation])
 
+  // Arkade → other asset: preflight VTXO onchain spendability before quotes.
+  React.useEffect(() => {
+    let cancelled = false
+
+    const run = async (): Promise<void> => {
+      if (fromWallet == null || toWallet == null) return
+      if (!isArkadeWallet(fromWallet)) return
+      if (fromWallet.id === toWallet.id) return
+
+      const result = await checkArkadeOnchainSwapEligibility(fromWallet)
+      if (cancelled) return
+
+      if (!result.eligible) {
+        navigation.setParams({
+          errorDisplayInfo: buildArkadeSwapErrorDisplay(result)
+        })
+      }
+    }
+
+    run().catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [fromWallet, fromWalletId, navigation, toWallet, toWalletId])
+
   //
   // Callbacks
   //
@@ -166,6 +214,7 @@ export const SwapCreateScene: React.FC<Props> = props => {
     const isSwapBelowLimit = asMaybeSwapBelowLimitError(error) != null
     const isSwapPermission = asMaybeSwapPermissionError(error) != null
     const isSwapCurrency = asMaybeSwapCurrencyError(error) != null
+    const isArkadeOnchain = isArkadeOnchainSwapIneligibleError(error)
 
     let clearError = false
 
@@ -186,6 +235,7 @@ export const SwapCreateScene: React.FC<Props> = props => {
       changed === 'asset' &&
       (isSwapPermission ||
         isSwapCurrency ||
+        isArkadeOnchain ||
         isInsufficentFunds ||
         isSwapAboveLimit ||
         isSwapBelowLimit)
@@ -228,7 +278,7 @@ export const SwapCreateScene: React.FC<Props> = props => {
     )
   }
 
-  const getQuote = (swapRequest: EdgeSwapRequest): void => {
+  const getQuote = async (swapRequest: EdgeSwapRequest): Promise<void> => {
     if (exchangeInfo != null) {
       const disableSrc = checkDisableAsset(
         exchangeInfo.swap.disableAssets.source,
@@ -262,6 +312,22 @@ export const SwapCreateScene: React.FC<Props> = props => {
         return
       }
     }
+
+    if (isArkadeWallet(swapRequest.fromWallet)) {
+      const nativeAmount =
+        swapRequest.quoteFor === 'max' ? undefined : swapRequest.nativeAmount
+      const eligibility = await checkArkadeOnchainSwapEligibility(
+        swapRequest.fromWallet,
+        nativeAmount
+      )
+      if (!eligibility.eligible) {
+        navigation.setParams({
+          errorDisplayInfo: buildArkadeSwapErrorDisplay(eligibility)
+        })
+        return
+      }
+    }
+
     // Clear the error state:
     navigation.setParams({
       errorDisplayInfo: undefined
@@ -431,7 +497,7 @@ export const SwapCreateScene: React.FC<Props> = props => {
       toWallet
     }
 
-    getQuote(request)
+    getQuote(request).catch(showError)
   })
 
   const handleNext = useHandler(() => {
@@ -456,7 +522,7 @@ export const SwapCreateScene: React.FC<Props> = props => {
 
     if (checkAmountExceedsBalance()) return
 
-    getQuote(request)
+    getQuote(request).catch(showError)
   })
 
   const handleFromSelectWallet = useHandler(async () => {

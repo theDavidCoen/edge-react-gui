@@ -645,6 +645,8 @@ const strings = {
   arkade_exit_success_1s: 'Exit submitted to %s',
   arkade_exit_unavailable:
     'Exit is unavailable. Update currency plugins or reopen the wallet.',
+  arkade_swap_onchain_unavailable_title: 'Cannot swap from Arkade yet',
+  arkade_swap_settlement_min_expiry_gap_title: 'SettlementMinExpiryGap',
   settings_monero: 'Monero LWS Server',
   settings_monero_edge_lws: 'Edge LWS',
   settings_monero_custom: 'Custom Light Wallet Server',

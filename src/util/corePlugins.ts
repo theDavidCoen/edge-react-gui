@@ -6,7 +6,9 @@ const hasSwapKitV2Config =
   ENV.SWAPKIT_INIT !== false &&
   typeof ENV.SWAPKIT_INIT === 'object' &&
   ((ENV.SWAPKIT_INIT.thorswapApiKey ?? '') !== '' ||
-    (ENV.SWAPKIT_INIT.thorswapXApiKey ?? '') !== '')
+    // Some env shapes still carry the legacy X key name.
+    ((ENV.SWAPKIT_INIT as { thorswapXApiKey?: string }).thorswapXApiKey ??
+      '') !== '')
 
 const hasSwapKitV3Config =
   ENV.SWAPKITV3_INIT !== false &&
