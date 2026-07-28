@@ -23,7 +23,7 @@ import { Paragraph } from '../components/themed/EdgeText'
 import { deleteLoanAccount } from '../controllers/loan-manager/redux/actions'
 import { lstrings } from '../locales/strings'
 import type { ThunkAction } from '../types/reduxTypes'
-import type { WalletsTabSceneProps } from '../types/routerTypes'
+import type { NavigationBase, WalletsTabSceneProps } from '../types/routerTypes'
 import { getCurrencyCode } from '../util/CurrencyInfoHelpers'
 import { getWalletName } from '../util/CurrencyWalletHelpers'
 import { logActivity } from '../util/logger'
@@ -374,7 +374,7 @@ export function walletListMenuAction(
           <EditWalletSettingsModal
             bridge={bridge}
             wallet={wallet}
-            navigation={navigation}
+            navigation={navigation as NavigationBase}
             onNavigate={navigationPath => {
               if (navigationPath === 'currencySettings') {
                 navigation.navigate('currencySettings', {

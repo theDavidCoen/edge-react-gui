@@ -10,6 +10,7 @@ import { QrCode } from '../themed/QrCode'
 
 interface Props {
   address: string
+  addressType?: string
   tokenId: EdgeTokenId
   wallet: EdgeCurrencyWallet
 
@@ -20,17 +21,18 @@ interface Props {
  * An address QR code in the receive scene.
  */
 export const AddressQr: React.FC<Props> = props => {
-  const { address, tokenId, wallet, nativeAmount } = props
+  const { address, addressType, tokenId, wallet, nativeAmount } = props
 
-  const [encodedUri] = useAsyncValue(
-    async () =>
-      await wallet.encodeUri({
-        publicAddress: address,
-        currencyCode: getCurrencyCode(wallet, tokenId),
-        nativeAmount
-      }),
-    [address, tokenId, nativeAmount, wallet]
-  )
+  const [encodedUri] = useAsyncValue(async () => {
+    // LNURL receive data is already the sharable payload. Running it through
+    // encodeUri() throws InvalidPublicAddressError.
+    if (addressType === 'lnurlAddress') return address
+    return await wallet.encodeUri({
+      publicAddress: address,
+      currencyCode: getCurrencyCode(wallet, tokenId),
+      nativeAmount
+    })
+  }, [address, addressType, tokenId, nativeAmount, wallet])
 
   const handlePress = useHandler(() => {
     Airship.show(bridge => (

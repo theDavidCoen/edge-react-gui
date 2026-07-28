@@ -13,6 +13,7 @@ import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
 import { SettingsHeaderRow } from '../settings/SettingsHeaderRow'
 import { SettingsRadioRow } from '../settings/SettingsRadioRow'
 import { UnscaledText } from '../text/UnscaledText'
+import { MaybeArkadeUserSettings } from '../themed/MaybeArkadeUserSettings'
 import {
   MaybeBlockbookSetting,
   MaybeCustomServersSetting,
@@ -84,6 +85,7 @@ export const CurrencySettingsScene: React.FC<Props> = props => {
         <MaybeBlockbookSetting currencyConfig={currencyConfig} />
         <MaybeCustomServersSetting currencyConfig={currencyConfig} />
         <MaybeElectrumSetting currencyConfig={currencyConfig} />
+        <MaybeArkadeUserSettings currencyConfig={currencyConfig} />
         <MaybeMoneroUserSettings currencyConfig={currencyConfig} />
       </SceneContainer>
     </SceneWrapper>

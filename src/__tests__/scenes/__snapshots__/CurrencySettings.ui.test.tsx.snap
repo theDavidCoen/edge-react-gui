@@ -994,6 +994,762 @@ exports[`CurrencySettings should render 1`] = `
             </View>
           </View>
         </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "margin": 11,
+            }
+          }
+        >
+          <Text
+            adjustsFontSizeToFit={true}
+            allowFontScaling={false}
+            minimumFontScale={0.65}
+            numberOfLines={1}
+            style={
+              [
+                {
+                  "color": "#FFFFFF",
+                  "fontFamily": "Quicksand-Regular",
+                  "fontSize": 22,
+                  "includeFontPadding": false,
+                },
+                {
+                  "color": "#FFFFFF",
+                  "flexGrow": 1,
+                  "flexShrink": 1,
+                  "fontFamily": "Quicksand-Medium",
+                  "fontSize": 22,
+                  "textAlign": "left",
+                },
+                null,
+              ]
+            }
+          >
+            Custom Arkade Operator
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "backgroundColor": "rgba(255, 255, 255, 0)",
+              "padding": 22,
+            }
+          }
+        >
+          <Text
+            allowFontScaling={false}
+            style={
+              {
+                "color": "#FFFFFF",
+                "fontFamily": "Quicksand-Regular",
+                "fontSize": 22,
+              }
+            }
+          >
+            Edge connects to the Arkade Operator (ASP) for offchain Bitcoin. Leave custom off to use the default Arkade Operator.
+          </Text>
+        </View>
+        <View
+          style={
+            [
+              {
+                "alignSelf": "stretch",
+                "borderRadius": 16,
+              },
+              {
+                "marginBottom": 11,
+                "marginLeft": 11,
+                "marginRight": 11,
+                "marginTop": 11,
+              },
+              {
+                "paddingBottom": 11,
+                "paddingLeft": 11,
+                "paddingRight": 11,
+                "paddingTop": 11,
+              },
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "backgroundColor": "rgba(255, 255, 255, .1)",
+                "borderRadius": 16,
+                "bottom": 0,
+                "left": 0,
+                "overflow": "hidden",
+                "position": "absolute",
+                "right": 0,
+                "top": 0,
+              }
+            }
+          />
+          <View
+            style={
+              [
+                {
+                  "flexDirection": "column",
+                  "flexGrow": 1,
+                  "flexShrink": 1,
+                },
+                {
+                  "marginVertical": 0,
+                },
+              ]
+            }
+          >
+            <View
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={false}
+              collapsable={false}
+              focusable={true}
+              hitSlop={11}
+              onClick={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "rgba(255, 255, 255, 0)",
+                  "flexDirection": "row",
+                  "marginBottom": 1,
+                  "minHeight": 67,
+                  "opacity": 1,
+                  "padding": 11,
+                }
+              }
+            >
+              <Text
+                allowFontScaling={false}
+                style={
+                  {
+                    "color": "#FFFFFF",
+                    "flexGrow": 1,
+                    "flexShrink": 1,
+                    "fontFamily": "Quicksand-Regular",
+                    "fontSize": 22,
+                    "paddingHorizontal": 11,
+                    "textAlign": "left",
+                  }
+                }
+              >
+                Enable Custom Operator
+              </Text>
+              <View>
+                <View
+                  collapsable={false}
+                  jestAnimatedProps={
+                    {
+                      "value": {},
+                    }
+                  }
+                  jestAnimatedStyle={
+                    {
+                      "value": {
+                        "opacity": 0,
+                      },
+                    }
+                  }
+                  jestInlineStyle={
+                    [
+                      {
+                        "aspectRatio": 1,
+                        "position": "absolute",
+                        "width": "100%",
+                        "zIndex": 1,
+                      },
+                    ]
+                  }
+                  nativeID="7"
+                  pending={false}
+                  style={
+                    [
+                      {
+                        "aspectRatio": 1,
+                        "position": "absolute",
+                        "width": "100%",
+                        "zIndex": 1,
+                      },
+                      {
+                        "opacity": 0,
+                      },
+                    ]
+                  }
+                >
+                  <ActivityIndicator
+                    color="#00f1a2"
+                    style={
+                      {
+                        "height": 34,
+                        "marginHorizontal": 11,
+                      }
+                    }
+                  />
+                </View>
+                <View
+                  collapsable={false}
+                  jestAnimatedProps={
+                    {
+                      "value": {},
+                    }
+                  }
+                  jestAnimatedStyle={
+                    {
+                      "value": {
+                        "opacity": 1,
+                      },
+                    }
+                  }
+                  jestInlineStyle={{}}
+                  nativeID="8"
+                  pending={false}
+                  style={
+                    [
+                      {
+                        "opacity": 1,
+                      },
+                    ]
+                  }
+                >
+                  <View
+                    pointerEvents="none"
+                    style={
+                      {
+                        "marginHorizontal": 11,
+                        "padding": 0,
+                      }
+                    }
+                  >
+                    <RCTSwitch
+                      accessibilityRole="switch"
+                      onChange={[Function]}
+                      onResponderTerminationRequest={[Function]}
+                      onStartShouldSetResponder={[Function]}
+                      onTintColor="#00f1a2"
+                      style={
+                        [
+                          {
+                            "height": 31,
+                            "width": 51,
+                          },
+                          {
+                            "backgroundColor": "#888888",
+                            "borderRadius": 16,
+                          },
+                        ]
+                      }
+                      tintColor="#888888"
+                      value={false}
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "margin": 11,
+            }
+          }
+        >
+          <Text
+            adjustsFontSizeToFit={true}
+            allowFontScaling={false}
+            minimumFontScale={0.65}
+            numberOfLines={1}
+            style={
+              [
+                {
+                  "color": "#FFFFFF",
+                  "fontFamily": "Quicksand-Regular",
+                  "fontSize": 22,
+                  "includeFontPadding": false,
+                },
+                {
+                  "color": "#FFFFFF",
+                  "flexGrow": 1,
+                  "flexShrink": 1,
+                  "fontFamily": "Quicksand-Medium",
+                  "fontSize": 22,
+                  "textAlign": "left",
+                },
+                null,
+              ]
+            }
+          >
+            Delegate
+          </Text>
+        </View>
+        <View
+          style={
+            {
+              "backgroundColor": "rgba(255, 255, 255, 0)",
+              "padding": 22,
+            }
+          }
+        >
+          <Text
+            allowFontScaling={false}
+            style={
+              {
+                "color": "#FFFFFF",
+                "fontFamily": "Quicksand-Regular",
+                "fontSize": 22,
+              }
+            }
+          >
+            Auto-delegate renews expiring VTXOs via the Arkade delegate (default: https://delegate.arkade.money). Turn on Custom Delegate only to use your own URL.
+          </Text>
+        </View>
+        <View
+          style={
+            [
+              {
+                "alignSelf": "stretch",
+                "borderRadius": 16,
+              },
+              {
+                "marginBottom": 11,
+                "marginLeft": 11,
+                "marginRight": 11,
+                "marginTop": 11,
+              },
+              {
+                "paddingBottom": 11,
+                "paddingLeft": 11,
+                "paddingRight": 11,
+                "paddingTop": 11,
+              },
+              undefined,
+            ]
+          }
+        >
+          <View
+            style={
+              {
+                "backgroundColor": "rgba(255, 255, 255, .1)",
+                "borderRadius": 16,
+                "bottom": 0,
+                "left": 0,
+                "overflow": "hidden",
+                "position": "absolute",
+                "right": 0,
+                "top": 0,
+              }
+            }
+          />
+          <View
+            style={
+              [
+                {
+                  "flexDirection": "column",
+                  "flexGrow": 1,
+                  "flexShrink": 1,
+                },
+                {
+                  "marginVertical": 0,
+                },
+              ]
+            }
+          >
+            <View
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={false}
+              collapsable={false}
+              focusable={true}
+              hitSlop={11}
+              onClick={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "rgba(255, 255, 255, 0)",
+                  "flexDirection": "row",
+                  "marginBottom": 1,
+                  "minHeight": 67,
+                  "opacity": 1,
+                  "padding": 11,
+                }
+              }
+            >
+              <Text
+                allowFontScaling={false}
+                style={
+                  {
+                    "color": "#FFFFFF",
+                    "flexGrow": 1,
+                    "flexShrink": 1,
+                    "fontFamily": "Quicksand-Regular",
+                    "fontSize": 22,
+                    "paddingHorizontal": 11,
+                    "textAlign": "left",
+                  }
+                }
+              >
+                Enable Delegate
+              </Text>
+              <View>
+                <View
+                  collapsable={false}
+                  jestAnimatedProps={
+                    {
+                      "value": {},
+                    }
+                  }
+                  jestAnimatedStyle={
+                    {
+                      "value": {
+                        "opacity": 0,
+                      },
+                    }
+                  }
+                  jestInlineStyle={
+                    [
+                      {
+                        "aspectRatio": 1,
+                        "position": "absolute",
+                        "width": "100%",
+                        "zIndex": 1,
+                      },
+                    ]
+                  }
+                  nativeID="9"
+                  pending={false}
+                  style={
+                    [
+                      {
+                        "aspectRatio": 1,
+                        "position": "absolute",
+                        "width": "100%",
+                        "zIndex": 1,
+                      },
+                      {
+                        "opacity": 0,
+                      },
+                    ]
+                  }
+                >
+                  <ActivityIndicator
+                    color="#00f1a2"
+                    style={
+                      {
+                        "height": 34,
+                        "marginHorizontal": 11,
+                      }
+                    }
+                  />
+                </View>
+                <View
+                  collapsable={false}
+                  jestAnimatedProps={
+                    {
+                      "value": {},
+                    }
+                  }
+                  jestAnimatedStyle={
+                    {
+                      "value": {
+                        "opacity": 1,
+                      },
+                    }
+                  }
+                  jestInlineStyle={{}}
+                  nativeID="10"
+                  pending={false}
+                  style={
+                    [
+                      {
+                        "opacity": 1,
+                      },
+                    ]
+                  }
+                >
+                  <View
+                    pointerEvents="none"
+                    style={
+                      {
+                        "marginHorizontal": 11,
+                        "padding": 0,
+                      }
+                    }
+                  >
+                    <RCTSwitch
+                      accessibilityRole="switch"
+                      onChange={[Function]}
+                      onResponderTerminationRequest={[Function]}
+                      onStartShouldSetResponder={[Function]}
+                      onTintColor="#00f1a2"
+                      style={
+                        [
+                          {
+                            "height": 31,
+                            "width": 51,
+                          },
+                          {
+                            "backgroundColor": "#888888",
+                            "borderRadius": 16,
+                          },
+                        ]
+                      }
+                      tintColor="#888888"
+                      value={true}
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+            <BVLinearGradient
+              colors={
+                [
+                  452984831,
+                  452984831,
+                ]
+              }
+              endPoint={
+                {
+                  "x": 1,
+                  "y": 0.5,
+                }
+              }
+              locations={null}
+              startPoint={
+                {
+                  "x": 0,
+                  "y": 0.5,
+                }
+              }
+              style={
+                [
+                  {
+                    "borderBottomColor": "rgba(255, 255, 255, .1)",
+                    "borderBottomWidth": 1,
+                    "height": 1,
+                  },
+                  {
+                    "margin": 11,
+                  },
+                ]
+              }
+            />
+            <View
+              accessibilityState={
+                {
+                  "busy": undefined,
+                  "checked": undefined,
+                  "disabled": false,
+                  "expanded": undefined,
+                  "selected": undefined,
+                }
+              }
+              accessibilityValue={
+                {
+                  "max": undefined,
+                  "min": undefined,
+                  "now": undefined,
+                  "text": undefined,
+                }
+              }
+              accessible={false}
+              collapsable={false}
+              focusable={true}
+              hitSlop={11}
+              onClick={[Function]}
+              onResponderGrant={[Function]}
+              onResponderMove={[Function]}
+              onResponderRelease={[Function]}
+              onResponderTerminate={[Function]}
+              onResponderTerminationRequest={[Function]}
+              onStartShouldSetResponder={[Function]}
+              style={
+                {
+                  "alignItems": "center",
+                  "backgroundColor": "rgba(255, 255, 255, 0)",
+                  "flexDirection": "row",
+                  "marginBottom": 1,
+                  "minHeight": 67,
+                  "opacity": 1,
+                  "padding": 11,
+                }
+              }
+            >
+              <Text
+                allowFontScaling={false}
+                style={
+                  {
+                    "color": "#FFFFFF",
+                    "flexGrow": 1,
+                    "flexShrink": 1,
+                    "fontFamily": "Quicksand-Regular",
+                    "fontSize": 22,
+                    "paddingHorizontal": 11,
+                    "textAlign": "left",
+                  }
+                }
+              >
+                Custom Delegate
+              </Text>
+              <View>
+                <View
+                  collapsable={false}
+                  jestAnimatedProps={
+                    {
+                      "value": {},
+                    }
+                  }
+                  jestAnimatedStyle={
+                    {
+                      "value": {
+                        "opacity": 0,
+                      },
+                    }
+                  }
+                  jestInlineStyle={
+                    [
+                      {
+                        "aspectRatio": 1,
+                        "position": "absolute",
+                        "width": "100%",
+                        "zIndex": 1,
+                      },
+                    ]
+                  }
+                  nativeID="11"
+                  pending={false}
+                  style={
+                    [
+                      {
+                        "aspectRatio": 1,
+                        "position": "absolute",
+                        "width": "100%",
+                        "zIndex": 1,
+                      },
+                      {
+                        "opacity": 0,
+                      },
+                    ]
+                  }
+                >
+                  <ActivityIndicator
+                    color="#00f1a2"
+                    style={
+                      {
+                        "height": 34,
+                        "marginHorizontal": 11,
+                      }
+                    }
+                  />
+                </View>
+                <View
+                  collapsable={false}
+                  jestAnimatedProps={
+                    {
+                      "value": {},
+                    }
+                  }
+                  jestAnimatedStyle={
+                    {
+                      "value": {
+                        "opacity": 1,
+                      },
+                    }
+                  }
+                  jestInlineStyle={{}}
+                  nativeID="12"
+                  pending={false}
+                  style={
+                    [
+                      {
+                        "opacity": 1,
+                      },
+                    ]
+                  }
+                >
+                  <View
+                    pointerEvents="none"
+                    style={
+                      {
+                        "marginHorizontal": 11,
+                        "padding": 0,
+                      }
+                    }
+                  >
+                    <RCTSwitch
+                      accessibilityRole="switch"
+                      onChange={[Function]}
+                      onResponderTerminationRequest={[Function]}
+                      onStartShouldSetResponder={[Function]}
+                      onTintColor="#00f1a2"
+                      style={
+                        [
+                          {
+                            "height": 31,
+                            "width": 51,
+                          },
+                          {
+                            "backgroundColor": "#888888",
+                            "borderRadius": 16,
+                          },
+                        ]
+                      }
+                      tintColor="#888888"
+                      value={false}
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
       </View>
     </View>
   </RCTScrollView>,

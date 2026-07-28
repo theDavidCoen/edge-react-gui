@@ -132,6 +132,7 @@ interface State {
 
 interface AddressInfo {
   addressString: string
+  addressType?: string
   label: string
 }
 
@@ -234,6 +235,7 @@ export class RequestSceneComponent extends React.Component<
 
         return {
           addressString: edgeAddress.publicAddress,
+          addressType: edgeAddress.addressType,
           label
         }
       })
@@ -247,6 +249,11 @@ export class RequestSceneComponent extends React.Component<
 
     if (wallet == null || currencyCode == null || selectedAddress == null)
       return
+
+    // LNURL receive strings are already valid share/copy payloads.
+    if (selectedAddress.addressType === 'lnurlAddress') {
+      return selectedAddress.addressString
+    }
 
     return await wallet.encodeUri({
       currencyCode,
@@ -580,6 +587,7 @@ export class RequestSceneComponent extends React.Component<
             <View style={styles.qrContainer}>
               <AddressQr
                 address={this.state.addresses[0].addressString}
+                addressType={this.state.addresses[0].addressType}
                 wallet={wallet}
                 tokenId={tokenId}
                 nativeAmount={this.state.amounts?.nativeAmount}
@@ -593,6 +601,7 @@ export class RequestSceneComponent extends React.Component<
               renderItem={item => (
                 <AddressQr
                   address={item.addressString}
+                  addressType={item.addressType}
                   wallet={wallet}
                   tokenId={tokenId}
                   nativeAmount={this.state.amounts?.nativeAmount}

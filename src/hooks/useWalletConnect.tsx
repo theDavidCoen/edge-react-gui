@@ -123,9 +123,11 @@ export function useWalletConnect(): WalletConnect {
 
           resolve(proposal)
         })
-        client.core.pairing.pair({ uri, activatePairing: true }).catch(e => {
-          reject(e)
-        })
+        client.core.pairing
+          .pair({ uri, activatePairing: true })
+          .catch((e: unknown) => {
+            reject(e)
+          })
       }),
       20000
     )
@@ -186,7 +188,7 @@ export function useWalletConnect(): WalletConnect {
           id: proposal.id,
           reason: getSdkError('USER_REJECTED')
         })
-        .catch(e => {
+        .catch((e: unknown) => {
           console.log('walletConnect rejectSession error', String(e))
         })
     }
@@ -213,7 +215,7 @@ export function useWalletConnect(): WalletConnect {
         message={sprintf(lstrings.wc_dapp_disconnected, dAppName)}
         onPress={() => {}}
       />
-    )).catch(e => {
+    )).catch((e: unknown) => {
       console.log(e)
     })
   })
@@ -226,7 +228,7 @@ export function useWalletConnect(): WalletConnect {
           topic,
           response: { id, jsonrpc: '2.0', result }
         })
-        .catch(e => {
+        .catch((e: unknown) => {
           console.log('walletConnect approveRequest error', String(e))
         })
     }
@@ -243,7 +245,7 @@ export function useWalletConnect(): WalletConnect {
           error: getSdkError('USER_REJECTED_METHODS')
         }
       })
-      .catch(e => {
+      .catch((e: unknown) => {
         console.log('walletConnect rejectRequest error', String(e))
       })
   })
@@ -274,10 +276,13 @@ export function useWalletConnect(): WalletConnect {
 const getSupportedNamespaces = (
   chainId: WalletConnectChainId,
   addr: string
-) => {
+): Record<
+  string,
+  { chains: string[]; methods: string[]; events: string[]; accounts: string[] }
+> => {
   const { namespace, reference } = chainId
 
-  let methods: string[]
+  let methods: string[] = []
   switch (namespace) {
     case 'eip155':
       methods = [
@@ -296,6 +301,10 @@ const getSupportedNamespaces = (
       break
     case 'cosmos':
       methods = ['cosmos_getAccounts', 'cosmos_signDirect', 'cosmos_signAmino']
+      break
+    case 'bip122':
+      methods = []
+      break
   }
 
   return {
@@ -310,7 +319,7 @@ const getSupportedNamespaces = (
 
 export const getAccounts = async (
   currencyWallets: Record<string, EdgeCurrencyWallet>
-) => {
+): Promise<Map<string, string>> => {
   const map = new Map<string, string>()
   for (const walletId of Object.keys(currencyWallets)) {
     const wallet = currencyWallets[walletId]
