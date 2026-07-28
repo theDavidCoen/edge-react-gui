@@ -54,10 +54,6 @@ interface ArkadeExitOtherMethods {
     destination: string
     phase: 'sweep' | 'unroll'
   }>
-  arkadeOffboardToAddress?: (destination: string) => Promise<{
-    txid: string
-    destination: string
-  }>
 }
 
 const formatSatsLine = (
@@ -240,38 +236,27 @@ export const ArkadeUnilateralExitModal: React.FC<Props> = props => {
     setBusy(true)
     try {
       const otherMethods = wallet.otherMethods as ArkadeExitOtherMethods
-      if (otherMethods.arkadeUnilateralExitToAddress != null) {
-        const result = await otherMethods.arkadeUnilateralExitToAddress(
-          destAddress
-        )
-        if (result.phase === 'sweep' && result.txid !== '') {
-          showToast(
-            sprintf(
-              lstrings.arkade_exit_success_1s,
-              destName !== '' ? destName : result.destination.slice(0, 12)
-            )
-          )
-        } else {
-          showToast(lstrings.arkade_exit_success_unroll)
-        }
-        bridge.resolve(true)
-        return
-      }
-
-      if (otherMethods.arkadeOffboardToAddress == null) {
+      if (otherMethods.arkadeUnilateralExitToAddress == null) {
         throw new Error(lstrings.arkade_exit_unavailable)
       }
-      const result = await otherMethods.arkadeOffboardToAddress(destAddress)
-      showToast(
-        sprintf(
-          lstrings.arkade_exit_success_1s,
-          destName !== '' ? destName : result.destination.slice(0, 12)
-        )
+      const result = await otherMethods.arkadeUnilateralExitToAddress(
+        destAddress
       )
+      if (result.phase === 'sweep' && result.txid !== '') {
+        showToast(
+          sprintf(
+            lstrings.arkade_exit_success_1s,
+            destName !== '' ? destName : result.destination.slice(0, 12)
+          )
+        )
+      } else {
+        showToast(lstrings.arkade_exit_success_unroll)
+      }
       bridge.resolve(true)
     } catch (error: unknown) {
       showError(error)
       reset()
+    } finally {
       setBusy(false)
     }
   })
