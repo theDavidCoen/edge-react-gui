@@ -58,34 +58,49 @@ All cross-chain paths use **Boltz API v2 chain swaps** (`https://api.boltz.excha
 
 Conversion wei↔sats is handled in `EthereumEngine.ts` (`WEI_PER_SAT = 1e10`).
 
-### Pending swap persistence (disklet)
+### Pending swap persistence (`wallet.localDisklet`)
 
-Each pending swap is written to `walletLocalDisklet` as `parmesan-boltz-<id>.json`:
+Each pending swap is written to the engine **`walletLocalDisklet`** (= Edge `wallet.localDisklet`, **not** the synced `wallet.disklet`) as `parmesan-boltz-<id>.json`:
 
 ```json
 {
   "id": "...",
-  "direction": "rbtc_btc",
-  "to": "bc1...",
+  "direction": "btc_rbtc",
   "preimage": "hex",
   "preimageHash": "hex",
-  "claimPriv": "hex",
-  "claimPub": "hex",
-  "lockTxid": "0x...",
-  "status": "locked_awaiting_btc_claim"
+  "claimAddress": "0x...",
+  "amount": "31085",
+  "status": "locked_awaiting_claim",
+  "serverLockTxid": "0x...",
+  "claimAmountWei": "...",
+  "refundAddress": "0x...",
+  "timelock": 9107493
 }
 ```
 
-Cooperative BTC claim after server lockup is still manual (keys available on disklet).
+Statuses include: `locked_awaiting_claim` / `locked_awaiting_btc_claim` → `rbtc_claim_ready` → `completed` / `refund_needed`.
+
+### BTC→RBTC lifecycle (important)
+
+Boltz does **not** auto-deliver RBTC. After the user locks BTC:
+
+1. `transaction.mempool` / `transaction.confirmed` — user lock seen  
+2. `transaction.server.mempool` / `transaction.server.confirmed` — Boltz locked RBTC in `EtherSwap`  
+3. **Client must** call `EtherSwap.claim(preimage, amount, refundAddress, timelock)` from the RSK claim address  
+4. `transaction.claim.pending` / `transaction.claimed` — Boltz claims the BTC lock using the revealed preimage  
+
+`refundPublicKey` for BTC→RBTC is the sending wallet HD pubkey at `m/<format>/0/0` (not an ephemeral key), so a timeout refund remains under user control.
 
 ### Boltz modules
 
 | File | Location |
 |------|----------|
-| Quote / create chain swap | `edge-currency-plugins-master/src/common/boltz/boltzChainSwap.ts` |
-| Quote / create chain swap (copy) | `edge-currency-accountbased/src/common/boltzChainSwap.ts` |
-| `encodeEtherSwapLockCalldata` | `boltzChainSwap.ts` (selector `0x0899146b`) |
-| EtherSwap contract (RSK) | `0xe761e1354097757c019855637746e7dd1bef1654` (v5/v6, chainId 30) — via `GET /v2/chain/RBTC/contracts` |
+| Quote / create / claim calldata | `edge-currency-plugins/src/common/boltz/boltzChainSwap.ts` |
+| Same helpers (accountbased copy) | `edge-currency-accountbased/src/common/boltzChainSwap.ts` |
+| Swap status poller | `boltzSwapMonitor.ts` |
+| `encodeEtherSwapLockCalldata` | selector `0x0899146b` |
+| `encodeEtherSwapClaimCalldata` | selector `0xc3c37fbc` |
+| EtherSwap (RSK) | `0xe761e1354097757c019855637746e7dd1bef1654` — via `GET /v2/chain/RBTC/contracts` |
 
 ---
 
@@ -95,30 +110,35 @@ Cooperative BTC claim after server lockup is still manual (keys available on dis
 
 | File | Change |
 |------|--------|
-| `android/app/build.gradle` | `applicationId`, `versionCode`, Firebase skip |
+| `android/app/build.gradle` | `applicationId` `app.edge.parmesan`, `versionCode`, Firebase skip |
 | `android/app/src/main/res/values/strings.xml` | `app_name` → **Edge Parmesan** |
 | `src/components/tiles/AddressTile2.tsx` | `canSelfTransfer` + `allowedAssets` triangle |
 | `src/util/parmesanCrossChain.ts` | `isEvmAddress` helper, EVM warning modal |
+| `src/util/parmesanBoltzClaim.ts` | Claim helpers; reads/writes **`wallet.localDisklet`** |
+| `src/components/services/ParmesanBoltzClaimService.tsx` | Auto `EtherSwap.claim` after `transaction.server.confirmed` |
+| `src/components/services/Services.tsx` | Mounts claim service |
+| `src/components/scenes/TransactionDetailsScene.tsx` | Copyable **Boltz Swap ID** row |
 | `src/locales/en_US.ts` + `enUS.json` | `scan_evm_address_warning_*` strings |
 
-### `edge-currency-plugins-master`
+### `edge-currency-plugins`
 
 | File | Change |
 |------|--------|
-| `src/common/boltz/boltzChainSwap.ts` | Chain swap BTC↔RBTC quote / create module |
-| `src/common/boltz/boltzSwapMonitor.ts` | Silent background poller for pending swaps (temporary) |
-| `src/common/utxobased/engine/UtxoEngine.ts` | `makeSpend` / `signTx` BTC→RBTC via Boltz; swap monitor start/stop |
+| `src/common/boltz/boltzChainSwap.ts` | Chain swap quote/create + claim calldata helpers |
+| `src/common/boltz/boltzSwapMonitor.ts` | Poller; sets `rbtc_claim_ready` on server lock |
+| `src/common/utxobased/engine/UtxoEngine.ts` | BTC→RBTC spend/sign/broadcast; wallet HD `refundPublicKey`; metadata notes with swap ID |
 | `src/common/arkade/arkadeTools.ts` | `parseUri` accepts `0x` from Arkade |
-| `src/common/arkade/ArkadeEngine.ts` | `makeSpend` Arkade→RBTC (composed path), `broadcastTx` |
+| `src/common/arkade/ArkadeEngine.ts` | Arkade→RBTC composed path |
 
 ### `edge-currency-accountbased`
 
 | File | Change |
 |------|--------|
-| `src/common/boltzChainSwap.ts` | Helper copy + `encodeEtherSwapLockCalldata`, `fetchRskEtherSwapAddress` |
-| `src/common/boltzSwapMonitor.ts` | Silent background poller for pending swaps (temporary) |
+| `src/common/boltzChainSwap.ts` | Helpers + `encodeEtherSwapLock/ClaimCalldata`, `fetchRskEtherSwapAddress` |
+| `src/common/boltzSwapMonitor.ts` | Poller for RBTC→BTC pending swaps |
 | `src/ethereum/EthereumTools.ts` | `parseUri` RSK accepts BTC addresses |
-| `src/ethereum/EthereumEngine.ts` | `makeSpend` RBTC→BTC (wei↔sats quote), `signTx` EtherSwap.lock, `broadcastTx` disklet persistence; swap monitor start/stop |
+| `src/ethereum/EthereumEngine.ts` | RBTC→BTC quote/lock/broadcast; disklet; swap ID in notes |
+| `src/ethereum/info/rskInfo.ts` | Blockscout → `https://rootstock.blockscout.com` (avoids sync stuck ~50%) |
 
 ---
 
@@ -126,16 +146,16 @@ Cooperative BTC claim after server lockup is still manual (keys available on dis
 
 ### Swap monitoring & RBTC claim (temporary)
 
-Both engines poll Boltz every 60s. For **BTC→RBTC**, when status reaches `transaction.server.confirmed`, Boltz has locked RBTC and the **client must** call `EtherSwap.claim(preimage, …)` from the RSK wallet.
+Engines poll Boltz every ~60s; the GUI claim service every ~20s. For **BTC→RBTC**, when status is `transaction.server.confirmed`, `ParmesanBoltzClaimService` broadcasts `EtherSwap.claim` from the RSK wallet using the preimage on **`localDisklet`**.
 
-`ParmesanBoltzClaimService` in the GUI does that automatically (reads `parmesan-boltz-*.json` from the BTC wallet disklet, then `makeSpend`/`signTx`/`broadcastTx` on RSK). This is a temporary cross-wallet orchestrator — not a proper swap UI.
+This is a temporary cross-wallet orchestrator — not a proper swap history / refund UI. The RSK claim address needs a small RBTC balance for gas (Boltz does not prepay miner fee on this path).
 
-**This is still temporary:** there is no dedicated swap history / refund screen. Refunds after expiry still require the Boltz web app (or a future in-app refund flow) using the wallet `refundPublicKey`.
+Refunds after expiry still need the [Boltz web app](https://boltz.exchange) (or a future in-app flow) with the wallet `refundPublicKey` at `m/<format>/0/0`.
 
-### BTC claim after RBTC→BTC
+### RSK history sync
 
-The EVM lock is broadcast successfully. The cooperative BTC claim is handled by Boltz automatically in the normal flow; the `claimPriv`/`claimPub` keys saved in the disklet are a fallback for manual recovery only.
+If the RSK wallet UI stays at ~50% sync, on-chain balance/txs may still be correct (check Blockscout) while Edge history lags. Prefer **Resync Blockchain**; explorer base URL must be `rootstock.blockscout.com`.
 
-### RBTC→BTC settlement timing
+### RBTC→BTC
 
-The BTC side unlocks only after the claim preimage is revealed on-chain or via the cooperative Boltz API.
+EVM lock is automated; Boltz normally claims BTC. `claimPriv`/`claimPub` on disklet are a manual-recovery fallback only.
