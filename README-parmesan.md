@@ -1,80 +1,23 @@
-# Parmesan (`app.edge.parmesan`)
+# Parmesan
 
-Demo build branched from Grana with **BTC ↔ Arkade ↔ Rootstock (RBTC)** Myself pairings and Boltz chain swaps.
-
-## Identità
-
-| | |
-|--|--|
-| App name | **Edge Parmesan** |
-| applicationId | `app.edge.parmesan` |
-| versionCode | `26072801` |
-| versionName | `4.50.0` |
-| Branch GUI | `parmesan-4.50.0-26072801` (da `grana-4.50.0-26072701`) |
-| Branch plugins | `edge-currency-plugins-master` → `feature/parmesan-rbtc-boltz` |
-| Branch accountbased | `edge-currency-accountbased` → `feature/parmesan-rbtc-boltz` |
-
-Installa side-by-side con Grana (`app.edge.grana`): i due `applicationId` sono distinti.
+Parmesan is a demo build of the Edge wallet that explores **BTC ↔ Arkade ↔ Rootstock (RBTC)** cross-chain UX within the native Edge send flow. The goal is to validate that users can self-transfer between all three wallet types — Bitcoin, Arkade, and RBTC — using familiar UI patterns (Your Wallets / Myself), with fees transparently shown in a single Send screen. Boltz chain swaps power every path under the hood; no exchange plugin, no extra confirmation steps.
 
 ---
 
-## Come ricompilare
+## Myself — full triangle
 
-```bash
-# 1. Rebuild accountbased (se modificato)
-cd ~/Documenti/Edge/edge-currency-accountbased
-git checkout feature/parmesan-rbtc-boltz
-yarn webpack
+`AddressTile2.tsx` extended with `canSelfTransfer` + `allowedAssets`:
 
-# 2. Rebuild plugins (se modificato)
-cd ~/Documenti/Edge/edge-currency-plugins-master
-git checkout feature/parmesan-rbtc-boltz
-yarn webpack
-
-# 3. Sincronizza asset nella GUI
-GUI=~/Documenti/Edge/edge-react-gui
-AB=~/Documenti/Edge/edge-currency-accountbased
-PLUGIN=~/Documenti/Edge/edge-currency-plugins-master
-
-cp "$AB/android/src/main/assets/edge-currency-accountbased/edge-currency-accountbased.js" \
-   "$GUI/android/app/src/main/assets/edge-currency-accountbased/edge-currency-accountbased.js"
-cp "$AB/android/src/main/assets/edge-currency-accountbased/edge-currency-accountbased.js" \
-   "$GUI/node_modules/edge-currency-accountbased/android/src/main/assets/edge-currency-accountbased/edge-currency-accountbased.js"
-rsync -a "$AB/lib/" "$GUI/node_modules/edge-currency-accountbased/lib/"
-
-cp "$PLUGIN/android/src/main/assets/edge-currency-plugins/edge-currency-plugins.js" \
-   "$GUI/android/app/src/main/assets/edge-currency-plugins/edge-currency-plugins.js"
-
-# 4. Assemble release APK
-cd "$GUI/android"
-JAVA_HOME=/usr/lib/jvm/java-17-openjdk \
-  ./gradlew :app:assembleRelease --no-daemon
-
-# 5. Installa sul device (Xiaomi: abilita Developer options → Install via USB)
-adb install -r "$GUI/android/app/build/outputs/apk/release/app-release.apk"
-```
-
-Output APK: `edge-react-gui/android/app/build/outputs/apk/release/app-release.apk`  
-Copia flat: `~/Documenti/Edge/parmesan-4.50.0-26072801.apk`
-
-> **Xiaomi/HyperOS:** Developer options → **Install via USB** deve essere attivo (confermare il prompt MIUI) prima di `adb install`.
-
----
-
-## Myself — triangolo completo
-
-`AddressTile2.tsx` esteso con `canSelfTransfer` + `allowedAssets`:
-
-| Wallet sorgente | Destinazioni Myself disponibili |
+| Source wallet | Available Myself destinations |
 |---|---|
 | Bitcoin | Arkade, Rootstock (RBTC) |
 | Arkade | Bitcoin, Rootstock (RBTC) |
 | Rootstock (RBTC) | Bitcoin, Arkade |
 
-Selezione indirizzo:
-- Target **Arkade**: `boardingAddress` / `segwitAddress` (mai `ark1` onchain come destinazione diretta)
-- Target **Bitcoin**: `segwitAddress ?? publicAddress`
-- Target **Rootstock**: `publicAddress` (`0x…`)
+Address selection per target:
+- **Arkade**: `boardingAddress` / `segwitAddress` (never `ark1` as a direct onchain destination)
+- **Bitcoin**: `segwitAddress ?? publicAddress`
+- **Rootstock**: `publicAddress` (`0x…`)
 
 ---
 
@@ -82,44 +25,42 @@ Selezione indirizzo:
 
 ### BTC / Arkade → bare `0x…`
 
-Se l'utente scansiona o incolla un indirizzo EVM da un wallet Bitcoin o Arkade, il parse normale fallisce.  
-`parmesanCrossChain.ts` intercetta `/^0x[0-9a-fA-F]{40}$/`, mostra un warning modale ("Indirizzo EVM scansionato — sei su Rootstock?") e su conferma costruisce un `parsedUri` sintetico verso il wallet RSK.
+If the user scans or pastes an EVM address from a Bitcoin or Arkade wallet, normal URI parsing fails. `parmesanCrossChain.ts` detects `/^0x[0-9a-fA-F]{40}$/`, shows a warning modal ("EVM address scanned — are you sure this is Rootstock?"), and on confirmation builds a synthetic `parsedUri` targeting the RSK wallet.
 
-Stringhe localizzate aggiunte: `scan_evm_address_warning_title`, `scan_evm_address_warning_body`.
+Locale strings added: `scan_evm_address_warning_title`, `scan_evm_address_warning_body`.
 
 ### RSK → BTC / Arkade
 
-`EthereumTools.ts` (gated su `pluginId === 'rsk'`): `parseUri` accetta indirizzi Bitcoin onchain (`bc1…`, `1…`, `3…`) e li restituisce come `publicAddress` con metadata `boltz_rbtc_btc`, per poi essere consumati da `makeSpend`.
+`EthereumTools.ts` (gated on `pluginId === 'rsk'`): `parseUri` accepts Bitcoin onchain addresses (`bc1…`, `1…`, `3…`) and returns them as `publicAddress` with metadata `boltz_rbtc_btc`, consumed by `makeSpend`.
 
 ---
 
-## Spend + fee via Boltz
+## Spend + fees via Boltz
 
-Tutte le path Boltz usano **Boltz API v2 chain swaps** (`https://api.boltz.exchange/v2/swap/chain`).  
-`networkFee` in Send = fee Boltz (percentage + miner server/user) + network fee stimata.
+All cross-chain paths use **Boltz API v2 chain swaps** (`https://api.boltz.exchange/v2/swap/chain`). The `networkFee` shown in the Edge Send screen equals Boltz percentage fee + miner fees (server + user lockup/claim) + estimated network fee.
 
-### Tabella path
+### Path table
 
-| Da → A | Meccanismo | File engine |
-|--------|------------|-------------|
-| Bitcoin → RBTC (`0x`) | Chain swap BTC→RBTC; `signTx` crea swap + firma lock verso lockup address | `UtxoEngine.ts` |
-| RBTC → Bitcoin (`bc1`/`1`/`3`) | `makeSpend` quota; `signTx` crea swap RBTC→BTC, genera chiavi ephemeral, chiama `EtherSwap.lock(preimageHash, boltzClaimAddress, timelock)` via calldata ABI; broadcast EVM tx | `EthereumEngine.ts` |
-| Arkade → Bitcoin | Esistente (`arkToBtc` / settle via `@arkade-os/boltz-swap`) | `ArkadeEngine.ts` |
-| Bitcoin → Arkade | Esistente (boarding deposit) | `ArkadeEngine.ts` |
-| Arkade → RBTC (`0x`) | Composizione: crea chain swap BTC→RBTC (claimAddress = `0x` utente) → `arkToBtc` verso lockup BTC Boltz; fee = somma arkToBtc + BTC→RBTC | `ArkadeEngine.ts` |
-| RBTC → Arkade | RBTC→BTC con claim = boarding address Arkade | `EthereumEngine.ts` |
+| From → To | Mechanism | Engine file |
+|-----------|-----------|-------------|
+| Bitcoin → RBTC (`0x`) | Chain swap BTC→RBTC; `signTx` creates swap + signs lock to Boltz lockup address | `UtxoEngine.ts` |
+| RBTC → Bitcoin (`bc1`/`1`/`3`) | `makeSpend` quotes; `signTx` creates RBTC→BTC swap, generates ephemeral keys, calls `EtherSwap.lock(preimageHash, boltzClaimAddress, timelock)` via ABI calldata; broadcasts EVM tx | `EthereumEngine.ts` |
+| Arkade → Bitcoin | Existing (`arkToBtc` / settle via `@arkade-os/boltz-swap`) | `ArkadeEngine.ts` |
+| Bitcoin → Arkade | Existing (boarding deposit) | `ArkadeEngine.ts` |
+| Arkade → RBTC (`0x`) | Composed: create BTC→RBTC chain swap (claimAddress = user `0x`) → `arkToBtc` to Boltz BTC lockup; fee = sum of arkToBtc + BTC→RBTC | `ArkadeEngine.ts` |
+| RBTC → Arkade | RBTC→BTC with claim = Arkade boarding address | `EthereumEngine.ts` |
 
-### Unità
+### Units
 
-- Edge Bitcoin/Arkade: **satoshi**
+- Edge Bitcoin / Arkade: **satoshi**
 - Edge RBTC: **wei** (1 RBTC = 1e18 wei; 1 sat = 1e10 wei)
-- Boltz API: sempre **satoshi** per entrambi i lati
+- Boltz API: always **satoshi** on both sides
 
-La conversione wei↔sats è gestita in `EthereumEngine.ts` (`WEI_PER_SAT = 1e10`).
+Conversion wei↔sats is handled in `EthereumEngine.ts` (`WEI_PER_SAT = 1e10`).
 
-### Persistenza swap (disklet)
+### Pending swap persistence (disklet)
 
-Ogni swap pendente viene scritto su `walletLocalDisklet` come `parmesan-boltz-<id>.json` con:
+Each pending swap is written to `walletLocalDisklet` as `parmesan-boltz-<id>.json`:
 
 ```json
 {
@@ -135,52 +76,51 @@ Ogni swap pendente viene scritto su `walletLocalDisklet` come `parmesan-boltz-<i
 }
 ```
 
-Il claim BTC cooperativo dopo il lockup del server è ancora manuale (chiavi sul disklet).
+Cooperative BTC claim after server lockup is still manual (keys available on disklet).
 
-### Moduli Boltz
+### Boltz modules
 
-| File | Posizione |
-|------|-----------|
-| Quote/create chain swap | `edge-currency-plugins-master/src/common/boltz/boltzChainSwap.ts` |
-| Quote/create chain swap (copia) | `edge-currency-accountbased/src/common/boltzChainSwap.ts` |
+| File | Location |
+|------|----------|
+| Quote / create chain swap | `edge-currency-plugins-master/src/common/boltz/boltzChainSwap.ts` |
+| Quote / create chain swap (copy) | `edge-currency-accountbased/src/common/boltzChainSwap.ts` |
 | `encodeEtherSwapLockCalldata` | `boltzChainSwap.ts` (selector `0x0899146b`) |
-| Contratto EtherSwap RSK | `0xe761e1354097757c019855637746e7dd1bef1654` (v5/v6, chainId 30) — via `GET /v2/chain/RBTC/contracts` |
+| EtherSwap contract (RSK) | `0xe761e1354097757c019855637746e7dd1bef1654` (v5/v6, chainId 30) — via `GET /v2/chain/RBTC/contracts` |
 
 ---
 
-## File toccati (rispetto a Grana)
+## Changed files
 
-### `edge-react-gui` (`parmesan-4.50.0-26072801`)
+### `edge-react-gui`
 
-| File | Modifica |
-|------|----------|
-| `android/app/build.gradle` | `applicationId`, `versionCode`, skip Firebase per `app.edge.parmesan` |
+| File | Change |
+|------|--------|
+| `android/app/build.gradle` | `applicationId`, `versionCode`, Firebase skip |
 | `android/app/src/main/res/values/strings.xml` | `app_name` → **Edge Parmesan** |
-| `src/components/tiles/AddressTile2.tsx` | `canSelfTransfer` + `allowedAssets` triangolo |
-| `src/util/parmesanCrossChain.ts` | Helper `isEvmAddress`, warning modale EVM |
-| `src/locales/en_US.ts` + `enUS.json` | Stringhe `scan_evm_address_warning_*` |
+| `src/components/tiles/AddressTile2.tsx` | `canSelfTransfer` + `allowedAssets` triangle |
+| `src/util/parmesanCrossChain.ts` | `isEvmAddress` helper, EVM warning modal |
+| `src/locales/en_US.ts` + `enUS.json` | `scan_evm_address_warning_*` strings |
 
-### `edge-currency-plugins-master` (`feature/parmesan-rbtc-boltz`)
+### `edge-currency-plugins-master`
 
-| File | Modifica |
-|------|----------|
-| `src/common/boltz/boltzChainSwap.ts` | Modulo chain swap BTC↔RBTC quote/create |
-| `src/common/utxobased/engine/UtxoEngine.ts` | `makeSpend`/`signTx` BTC→RBTC via Boltz |
-| `src/common/arkade/arkadeTools.ts` | `parseUri` accetta `0x` da Arkade |
-| `src/common/arkade/ArkadeEngine.ts` | `makeSpend` Arkade→RBTC (composizione), `broadcastTx` |
+| File | Change |
+|------|--------|
+| `src/common/boltz/boltzChainSwap.ts` | Chain swap BTC↔RBTC quote / create module |
+| `src/common/utxobased/engine/UtxoEngine.ts` | `makeSpend` / `signTx` BTC→RBTC via Boltz |
+| `src/common/arkade/arkadeTools.ts` | `parseUri` accepts `0x` from Arkade |
+| `src/common/arkade/ArkadeEngine.ts` | `makeSpend` Arkade→RBTC (composed path), `broadcastTx` |
 
-### `edge-currency-accountbased` (`feature/parmesan-rbtc-boltz`)
+### `edge-currency-accountbased`
 
-| File | Modifica |
-|------|----------|
-| `src/common/boltzChainSwap.ts` | Copia helper + `encodeEtherSwapLockCalldata`, `fetchRskEtherSwapAddress` |
-| `src/ethereum/EthereumTools.ts` | `parseUri` RSK accetta indirizzi BTC |
-| `src/ethereum/EthereumEngine.ts` | `makeSpend` RBTC→BTC (quota wei↔sats), `signTx` EtherSwap.lock, `broadcastTx` persistenza disklet |
+| File | Change |
+|------|--------|
+| `src/common/boltzChainSwap.ts` | Helper copy + `encodeEtherSwapLockCalldata`, `fetchRskEtherSwapAddress` |
+| `src/ethereum/EthereumTools.ts` | `parseUri` RSK accepts BTC addresses |
+| `src/ethereum/EthereumEngine.ts` | `makeSpend` RBTC→BTC (wei↔sats quote), `signTx` EtherSwap.lock, `broadcastTx` disklet persistence |
 
 ---
 
-## Limitazioni note (Parmesan demo)
+## Known limitations
 
-- **BTC claim dopo RBTC→BTC**: il lock EVM viene broadcasted, ma il claim BTC cooperativo richiede un helper separato che legga `parmesan-boltz-*.json` dal disklet e firmi la transazione BTC di claim. Non ancora automatizzato nell'app.
-- **RBTC→BTC broadcast**: EtherSwap.lock funziona; il BTC lato Boltz viene sbloccato solo dopo che il claim viene rivelato onchain (o cooperativo via API Boltz).
-- **Grana intatto**: nessun commit su `grana-*` o `feature/arkade-integration`.
+- **BTC claim after RBTC→BTC**: the EVM lock is broadcast successfully, but the cooperative BTC claim requires a separate helper that reads `parmesan-boltz-*.json` from disklet and signs the BTC claim transaction. Not yet automated in-app.
+- **RBTC→BTC settlement**: the BTC side unlocks only after the claim preimage is revealed on-chain (or via cooperative Boltz API call).
