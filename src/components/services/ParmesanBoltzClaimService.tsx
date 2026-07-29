@@ -170,6 +170,10 @@ export const ParmesanBoltzClaimService = (props: Props): null => {
         console.warn(
           `[Parmesan] claim poll: no pending btc_rbtc disklet records on ${btcWallets.length} BTC wallet(s)`
         )
+      } else {
+        console.warn(
+          `[Parmesan] claim poll: ${foundPending} pending btc_rbtc record(s)`
+        )
       }
     }
 

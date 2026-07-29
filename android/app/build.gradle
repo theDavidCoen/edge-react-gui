@@ -95,7 +95,7 @@ android {
         applicationId "app.edge.parmesan"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 26072801
+        versionCode 26072904
         versionName "4.50.0"
 
         // Edge addition:

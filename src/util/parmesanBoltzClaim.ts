@@ -122,12 +122,15 @@ export async function fetchClaimParamsFromServerLockTx(
 export async function listParmesanSwapsOnWallet(
   wallet: EdgeCurrencyWallet
 ): Promise<Array<{ filename: string; record: ParmesanSwapRecord }>> {
-  const listing = await wallet.disklet.list('').catch(() => ({}))
+  // Engine writes parmesan-boltz-*.json to walletLocalDisklet (= localDisklet),
+  // NOT the synced repo disklet exposed as wallet.disklet.
+  const disklet = wallet.localDisklet
+  const listing = await disklet.list('').catch(() => ({}))
   const out: Array<{ filename: string; record: ParmesanSwapRecord }> = []
   for (const name of Object.keys(listing)) {
     if (!name.startsWith(BOLTZ_FILE_PREFIX)) continue
     try {
-      const raw = await wallet.disklet.getText(name)
+      const raw = await disklet.getText(name)
       out.push({
         filename: name,
         record: JSON.parse(raw) as ParmesanSwapRecord
@@ -143,7 +146,7 @@ export async function saveParmesanSwap(
   wallet: EdgeCurrencyWallet,
   record: ParmesanSwapRecord
 ): Promise<void> {
-  await wallet.disklet.setText(
+  await wallet.localDisklet.setText(
     `${BOLTZ_FILE_PREFIX}${record.id}.json`,
     JSON.stringify(record)
   )
