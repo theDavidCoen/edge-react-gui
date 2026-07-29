@@ -106,7 +106,8 @@ Cooperative BTC claim after server lockup is still manual (keys available on dis
 | File | Change |
 |------|--------|
 | `src/common/boltz/boltzChainSwap.ts` | Chain swap BTC↔RBTC quote / create module |
-| `src/common/utxobased/engine/UtxoEngine.ts` | `makeSpend` / `signTx` BTC→RBTC via Boltz |
+| `src/common/boltz/boltzSwapMonitor.ts` | Silent background poller for pending swaps (temporary) |
+| `src/common/utxobased/engine/UtxoEngine.ts` | `makeSpend` / `signTx` BTC→RBTC via Boltz; swap monitor start/stop |
 | `src/common/arkade/arkadeTools.ts` | `parseUri` accepts `0x` from Arkade |
 | `src/common/arkade/ArkadeEngine.ts` | `makeSpend` Arkade→RBTC (composed path), `broadcastTx` |
 
@@ -115,12 +116,32 @@ Cooperative BTC claim after server lockup is still manual (keys available on dis
 | File | Change |
 |------|--------|
 | `src/common/boltzChainSwap.ts` | Helper copy + `encodeEtherSwapLockCalldata`, `fetchRskEtherSwapAddress` |
+| `src/common/boltzSwapMonitor.ts` | Silent background poller for pending swaps (temporary) |
 | `src/ethereum/EthereumTools.ts` | `parseUri` RSK accepts BTC addresses |
-| `src/ethereum/EthereumEngine.ts` | `makeSpend` RBTC→BTC (wei↔sats quote), `signTx` EtherSwap.lock, `broadcastTx` disklet persistence |
+| `src/ethereum/EthereumEngine.ts` | `makeSpend` RBTC→BTC (wei↔sats quote), `signTx` EtherSwap.lock, `broadcastTx` disklet persistence; swap monitor start/stop |
 
 ---
 
 ## Known limitations
 
-- **BTC claim after RBTC→BTC**: the EVM lock is broadcast successfully, but the cooperative BTC claim requires a separate helper that reads `parmesan-boltz-*.json` from disklet and signs the BTC claim transaction. Not yet automated in-app.
-- **RBTC→BTC settlement**: the BTC side unlocks only after the claim preimage is revealed on-chain (or via cooperative Boltz API call).
+### Swap monitoring (temporary solution)
+
+Both engines (`UtxoEngine` for BTC→RBTC, `EthereumEngine` for RBTC→BTC) run a **silent background poller** (`boltzSwapMonitor.ts`) that checks Boltz swap status every 60 seconds after engine start.
+
+- If Boltz completes the swap, the disklet record is updated to `completed` and a log line is emitted.
+- If the swap expires (`swap.expired`), the disklet record is updated to `refund_needed` and a `warn` log is emitted with instructions.
+
+**This is a temporary, developer-facing solution.** There is no in-app UI for:
+- Surfacing pending or failed swaps to the user
+- Initiating a refund transaction from within the wallet
+- Showing a swap history screen
+
+A proper implementation would include a dedicated swap status screen (or inline wallet banner) that reads the disklet records and lets the user trigger a refund with one tap. Until then, a user whose swap expires must use the [Boltz web app](https://boltz.exchange) and the wallet's `refundPublicKey` (derived at `m/<format>/0/0`) to manually broadcast a refund.
+
+### BTC claim after RBTC→BTC
+
+The EVM lock is broadcast successfully. The cooperative BTC claim is handled by Boltz automatically in the normal flow; the `claimPriv`/`claimPub` keys saved in the disklet are a fallback for manual recovery only.
+
+### RBTC→BTC settlement timing
+
+The BTC side unlocks only after the claim preimage is revealed on-chain or via the cooperative Boltz API.
