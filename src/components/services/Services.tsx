@@ -38,6 +38,7 @@ import { FioService } from './FioService'
 import { LoanManagerService } from './LoanManagerService'
 import { NetworkActivity } from './NetworkActivity'
 import { NotificationService } from './NotificationService'
+import { ParmesanBoltzClaimService } from './ParmesanBoltzClaimService'
 import { PasswordReminderService } from './PasswordReminderService'
 import { PermissionsManager } from './PermissionsManager'
 import { SortedWalletList } from './SortedWalletList'
@@ -165,6 +166,7 @@ export const Services: React.FC<Props> = props => {
       {account == null ? null : (
         <AccountCallbackManager account={account} navigation={navigation} />
       )}
+      {account == null ? null : <ParmesanBoltzClaimService account={account} />}
       {account == null ? null : <SortedWalletList account={account} />}
       <EdgeContextCallbackManager navigation={navigation} />
       {account == null ? null : (

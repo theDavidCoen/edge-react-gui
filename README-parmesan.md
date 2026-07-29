@@ -124,19 +124,13 @@ Cooperative BTC claim after server lockup is still manual (keys available on dis
 
 ## Known limitations
 
-### Swap monitoring (temporary solution)
+### Swap monitoring & RBTC claim (temporary)
 
-Both engines (`UtxoEngine` for BTC→RBTC, `EthereumEngine` for RBTC→BTC) run a **silent background poller** (`boltzSwapMonitor.ts`) that checks Boltz swap status every 60 seconds after engine start.
+Both engines poll Boltz every 60s. For **BTC→RBTC**, when status reaches `transaction.server.confirmed`, Boltz has locked RBTC and the **client must** call `EtherSwap.claim(preimage, …)` from the RSK wallet.
 
-- If Boltz completes the swap, the disklet record is updated to `completed` and a log line is emitted.
-- If the swap expires (`swap.expired`), the disklet record is updated to `refund_needed` and a `warn` log is emitted with instructions.
+`ParmesanBoltzClaimService` in the GUI does that automatically (reads `parmesan-boltz-*.json` from the BTC wallet disklet, then `makeSpend`/`signTx`/`broadcastTx` on RSK). This is a temporary cross-wallet orchestrator — not a proper swap UI.
 
-**This is a temporary, developer-facing solution.** There is no in-app UI for:
-- Surfacing pending or failed swaps to the user
-- Initiating a refund transaction from within the wallet
-- Showing a swap history screen
-
-A proper implementation would include a dedicated swap status screen (or inline wallet banner) that reads the disklet records and lets the user trigger a refund with one tap. Until then, a user whose swap expires must use the [Boltz web app](https://boltz.exchange) and the wallet's `refundPublicKey` (derived at `m/<format>/0/0`) to manually broadcast a refund.
+**This is still temporary:** there is no dedicated swap history / refund screen. Refunds after expiry still require the Boltz web app (or a future in-app refund flow) using the wallet `refundPublicKey`.
 
 ### BTC claim after RBTC→BTC
 
