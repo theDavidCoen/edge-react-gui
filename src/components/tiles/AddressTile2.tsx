@@ -25,6 +25,11 @@ import { getCurrencyCode } from '../../util/CurrencyInfoHelpers'
 import { parseDeepLink } from '../../util/DeepLinkParser'
 import { checkPubAddress } from '../../util/FioAddressUtils'
 import { type NameService, reverseLookupName } from '../../util/nameServices'
+import {
+  canWarnEvmAsRootstock,
+  isEvmAddress,
+  normalizeRskUri
+} from '../../util/parmesanCrossChain'
 import { resolveName } from '../../util/resolveName'
 import { isEmail } from '../../util/utils'
 import { isZnsName, resolveZnsName } from '../../util/zns'
@@ -161,14 +166,13 @@ export const AddressTile2 = React.forwardRef(
           if (tokenId == null) return true
           return other.enabledTokenIds.includes(tokenId)
         }
-        // Arkade ↔ Bitcoin: collaborative exit (Ark→BTC) or boarding deposit (BTC→Ark).
+        // Parmesan: BTC ↔ Arkade ↔ Rootstock (RBTC) Myself pairings.
         if (tokenId != null) return false
         const sourcePluginId = coreWallet.currencyInfo.pluginId
         const otherPluginId = other.currencyInfo.pluginId
-        if (sourcePluginId === 'ark' + 'ade' && otherPluginId === 'bitcoin') {
-          return true
-        }
-        if (sourcePluginId === 'bitcoin' && otherPluginId === 'ark' + 'ade') {
+        const arkadePluginId = 'ark' + 'ade'
+        const cross = new Set([arkadePluginId, 'bitcoin', 'rsk'])
+        if (cross.has(sourcePluginId) && cross.has(otherPluginId)) {
           return true
         }
         return false
@@ -251,6 +255,14 @@ export const AddressTile2 = React.forwardRef(
                 address = resolvedAddress
               }
             } catch (_) {}
+          }
+        }
+
+        // Parmesan: accept explicit rsk:/rbtc: URIs when sending from BTC/Arkade
+        if (canWarnEvmAsRootstock(coreWallet.currencyInfo.pluginId)) {
+          const normalized = normalizeRskUri(address)
+          if (normalized !== address && isEvmAddress(normalized)) {
+            address = normalized
           }
         }
 
@@ -376,6 +388,35 @@ export const AddressTile2 = React.forwardRef(
                 showError(error)
               })
             }
+          } else if (
+            canWarnEvmAsRootstock(coreWallet.currencyInfo.pluginId) &&
+            isEvmAddress(address)
+          ) {
+            const approved = await Airship.show<boolean>(bridge => (
+              <ConfirmContinueModal
+                bridge={bridge}
+                title={lstrings.scan_evm_address_warning_title}
+                body={lstrings.scan_evm_address_warning_body}
+                warning
+              />
+            ))
+            if (!approved) {
+              setLoading(false)
+              return
+            }
+            const parsedUri: EdgeParsedUri = {
+              publicAddress: address,
+              currencyCode
+            }
+            setLoading(false)
+            await onChangeAddress({
+              fioAddress,
+              parsedUri,
+              addressEntryMethod,
+              alias: zanoAlias,
+              resolvedName
+            })
+            return
           } else {
             showToast(
               `${lstrings.scan_invalid_address_error_title} ${lstrings.scan_invalid_address_error_description}`
@@ -460,16 +501,22 @@ export const AddressTile2 = React.forwardRef(
       const { pluginId } = coreWallet.currencyInfo
       const arkadePluginId = 'ark' + 'ade'
       let allowedAssets = [{ pluginId, tokenId }]
-      if (pluginId === arkadePluginId) {
-        // Arkade → Bitcoin collaborative exit, plus other Arkade wallets.
+      if (tokenId == null && pluginId === arkadePluginId) {
         allowedAssets = [
           { pluginId, tokenId },
-          { pluginId: 'bitcoin', tokenId: null }
+          { pluginId: 'bitcoin', tokenId: null },
+          { pluginId: 'rsk', tokenId: null }
         ]
-      } else if (pluginId === 'bitcoin' && tokenId == null) {
-        // Bitcoin → Arkade boarding (bc1p), plus other Bitcoin wallets.
+      } else if (tokenId == null && pluginId === 'bitcoin') {
         allowedAssets = [
           { pluginId, tokenId },
+          { pluginId: arkadePluginId, tokenId: null },
+          { pluginId: 'rsk', tokenId: null }
+        ]
+      } else if (tokenId == null && pluginId === 'rsk') {
+        allowedAssets = [
+          { pluginId, tokenId },
+          { pluginId: 'bitcoin', tokenId: null },
           { pluginId: arkadePluginId, tokenId: null }
         ]
       }
@@ -493,8 +540,8 @@ export const AddressTile2 = React.forwardRef(
 
           let address: string
           if (targetPluginId === arkadePluginId) {
-            if (pluginId === 'bitcoin') {
-              // BTC → Arkade must use boarding/onchain (bc1p), never ark1.
+            if (pluginId === 'bitcoin' || pluginId === 'rsk') {
+              // Onchain claim / boarding (bc1p), never ark1.
               const addrs = await wallet.getAddresses({ tokenId: null })
               const boarding = addrs.find(
                 a =>
@@ -507,6 +554,8 @@ export const AddressTile2 = React.forwardRef(
               // Arkade → Arkade: instant ark1
               address = publicAddress
             }
+          } else if (targetPluginId === 'rsk') {
+            address = publicAddress
           } else {
             // Bitcoin (and others): prefer native segwit / public receive
             address = segwitAddress ?? publicAddress

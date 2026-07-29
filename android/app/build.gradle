@@ -92,10 +92,10 @@ android {
 
     namespace "co.edgesecure.app"
     defaultConfig {
-        applicationId "app.edge.grana"
+        applicationId "app.edge.parmesan"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 26072701
+        versionCode 26072801
         versionName "4.50.0"
 
         // Edge addition:
@@ -173,10 +173,11 @@ dependencies {
 // Edge additions
 // ---------------------------------------------------------------------
 
-// Allow local/demo builds with custom applicationId (ex: "app.edge.grana")
+// Allow local/demo builds with custom applicationId (ex: Parmesan / Grana)
 // even if `google-services.json` doesn't contain a matching Firebase client.
 afterEvaluate {
-    if (android.defaultConfig.applicationId == "app.edge.grana") {
+    def appId = android.defaultConfig.applicationId
+    if (appId == "app.edge.parmesan" || appId == "app.edge.grana") {
         tasks.matching { it.name == "processDebugGoogleServices" }.configureEach {
             enabled = false
         }
