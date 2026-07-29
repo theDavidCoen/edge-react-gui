@@ -8,7 +8,7 @@
  * Temporary orchestration until a dedicated swap UI exists.
  */
 
-import type { EdgeAccount } from 'edge-core-js'
+import type { EdgeAccount, EdgeCurrencyWallet } from 'edge-core-js'
 import * as React from 'react'
 
 import { useWatch } from '../../hooks/useWatch'
@@ -24,7 +24,8 @@ import {
 import { makePeriodicTask } from '../../util/PeriodicTask'
 import { showToast } from './AirshipInstance'
 
-const POLL_MS = 30_000
+const POLL_MS = 20_000
+const START_DELAY_MS = 3_000
 
 interface Props {
   account: EdgeAccount
@@ -32,18 +33,36 @@ interface Props {
 
 export const ParmesanBoltzClaimService = (props: Props): null => {
   const { account } = props
+  // Keep a live ref so the poll loop does not restart on every wallet update
+  // (sync progress would otherwise cancel the initial timer forever).
   const currencyWallets = useWatch(account, 'currencyWallets')
+  const walletsRef = React.useRef(currencyWallets)
+  walletsRef.current = currencyWallets
+
   const claiming = React.useRef<Set<string>>(new Set())
+  const warnedMissing = React.useRef<Set<string>>(new Set())
 
   React.useEffect(() => {
     const tick = async (): Promise<void> => {
-      const wallets = Object.values(currencyWallets)
+      const wallets = Object.values(walletsRef.current)
       const btcWallets = wallets.filter(
-        w => w.currencyInfo.pluginId === 'bitcoin'
+        (w: EdgeCurrencyWallet) => w.currencyInfo.pluginId === 'bitcoin'
       )
 
+      if (btcWallets.length === 0) return
+
+      let foundPending = 0
       for (const btcWallet of btcWallets) {
-        const swaps = await listParmesanSwapsOnWallet(btcWallet)
+        let swaps: Awaited<ReturnType<typeof listParmesanSwapsOnWallet>> = []
+        try {
+          swaps = await listParmesanSwapsOnWallet(btcWallet)
+        } catch (e) {
+          console.warn(
+            `[Parmesan] disklet list failed on ${btcWallet.id}: ${String(e)}`
+          )
+          continue
+        }
+
         for (const { record } of swaps) {
           if (record.direction !== 'btc_rbtc') continue
           if (
@@ -52,6 +71,7 @@ export const ParmesanBoltzClaimService = (props: Props): null => {
           ) {
             continue
           }
+          foundPending += 1
           if (claiming.current.has(record.id)) continue
 
           try {
@@ -61,6 +81,10 @@ export const ParmesanBoltzClaimService = (props: Props): null => {
             const serverTx = statusData.transaction as
               | { id?: string }
               | undefined
+
+            console.warn(
+              `[Parmesan] poll swap ${record.id} boltz=${state} disklet=${record.status}`
+            )
 
             if (
               state === 'transaction.claimed' ||
@@ -83,9 +107,16 @@ export const ParmesanBoltzClaimService = (props: Props): null => {
             await saveParmesanSwap(btcWallet, next)
 
             if (next.preimage == null || next.preimage === '') {
-              console.warn(
-                `[Parmesan] swap ${next.id} ready to claim but preimage missing on disklet`
-              )
+              if (!warnedMissing.current.has(next.id)) {
+                warnedMissing.current.add(next.id)
+                showToast(
+                  `Boltz ${next.id}: preimage missing — cannot claim`,
+                  6000
+                )
+                console.warn(
+                  `[Parmesan] swap ${next.id} ready to claim but preimage missing on disklet`
+                )
+              }
               continue
             }
 
@@ -96,13 +127,14 @@ export const ParmesanBoltzClaimService = (props: Props): null => {
             }
 
             const rskWallet = await findRskWalletForClaim(
-              currencyWallets,
+              walletsRef.current,
               claimAddress
             )
             if (rskWallet == null) {
-              console.warn(
-                `[Parmesan] no RSK wallet for claimAddress ${claimAddress}`
-              )
+              if (!warnedMissing.current.has(`rsk-${next.id}`)) {
+                warnedMissing.current.add(`rsk-${next.id}`)
+                showToast(`Boltz ${next.id}: no RSK wallet found`, 5000)
+              }
               continue
             }
 
@@ -133,22 +165,24 @@ export const ParmesanBoltzClaimService = (props: Props): null => {
           }
         }
       }
+
+      if (foundPending === 0) {
+        console.warn(
+          `[Parmesan] claim poll: no pending btc_rbtc disklet records on ${btcWallets.length} BTC wallet(s)`
+        )
+      }
     }
 
-    // Run soon after login, then periodically.
-    const initial = setTimeout(() => {
-      tick().catch(() => undefined)
-    }, 8_000)
+    // Stable effect (account only): wallet updates must not reset the timer.
     const task = makePeriodicTask(() => {
       tick().catch(() => undefined)
     }, POLL_MS)
-    task.start()
+    task.start({ wait: START_DELAY_MS })
 
     return () => {
-      clearTimeout(initial)
       task.stop()
     }
-  }, [currencyWallets])
+  }, [account])
 
   return null
 }
