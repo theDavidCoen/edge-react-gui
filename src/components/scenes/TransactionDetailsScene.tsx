@@ -627,6 +627,19 @@ export const TransactionDetailsComponent: React.FC<Props> = props => {
                 />
               )
             )}
+            {(() => {
+              // Parmesan: show Boltz swap ID as a copyable row when present in notes.
+              const notes = localMetadata.notes ?? ''
+              const match = /swap ID:\s*([A-Za-z0-9_-]+)/.exec(notes)
+              if (match == null) return null
+              return (
+                <EdgeRow
+                  body={match[1]}
+                  title="Boltz Swap ID"
+                  rightButtonType="copy"
+                />
+              )
+            })()}
           </EdgeCard>
         </EdgeAnim>
 
