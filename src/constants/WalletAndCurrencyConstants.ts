@@ -318,7 +318,8 @@ export const SPECIAL_CURRENCY_INFO: Record<string, SpecialCurrencyInfo> = {
     }
   },
   arkade: {
-    maxSpendTargets: UTXO_MAX_SPEND_TARGETS,
+    // Boltz arkToBtc + collaborative settle are single-destination only.
+    maxSpendTargets: 1,
     initWalletName: 'My Bitcoin (Arkade)',
     isImportKeySupported: true,
     // BTC L2 style: primary BTC icon + Arkade network badge (see CryptoIcon)

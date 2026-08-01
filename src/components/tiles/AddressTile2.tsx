@@ -161,7 +161,7 @@ export const AddressTile2 = React.forwardRef(
           if (tokenId == null) return true
           return other.enabledTokenIds.includes(tokenId)
         }
-        // Arkade ↔ Bitcoin: collaborative exit (Ark→BTC) or boarding deposit (BTC→Ark).
+        // Arkade ↔ Bitcoin: Boltz ARK→BTC (settle fallback) or boarding deposit (BTC→Ark).
         if (tokenId != null) return false
         const sourcePluginId = coreWallet.currencyInfo.pluginId
         const otherPluginId = other.currencyInfo.pluginId
