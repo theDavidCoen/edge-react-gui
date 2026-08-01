@@ -629,6 +629,11 @@ const strings = {
     'Timelock wait: ~%1$s blocks (~24 hours) before funds are spendable on L1.',
   arkade_exit_emergency_bullet:
     'Emergency procedure: use mainly if the Arkade operator (ASP) is not responding.',
+  arkade_exit_cpfp_fund_bullet:
+    'Unroll CPFP fees need on-chain BTC at this wallet’s P2TR key-path address below — not the Arkade boarding address (boarding funds auto-settle into Ark).',
+  arkade_exit_fee_address_label: 'Unroll fee address (P2TR key-path)',
+  arkade_exit_fee_address_loading: 'Loading fee address…',
+  arkade_exit_fee_address_error_1s: 'Could not load fee address: %1$s',
   arkade_exit_fee_error_1s: 'Could not estimate fees: %1$s',
   arkade_exit_success_unroll:
     'Unilateral exit started. After the timelock, funds will sweep to your Bitcoin wallet.',

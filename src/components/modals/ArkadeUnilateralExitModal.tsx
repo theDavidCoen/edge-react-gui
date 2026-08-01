@@ -1,3 +1,4 @@
+import Clipboard from '@react-native-clipboard/clipboard'
 import { div, toFixed } from 'biggystring'
 import type { EdgeCurrencyWallet } from 'edge-core-js'
 import * as React from 'react'
@@ -19,6 +20,7 @@ import { AlertCardUi4 } from '../cards/AlertCard'
 import { EdgeCard } from '../cards/EdgeCard'
 import { WarningCard } from '../cards/WarningCard'
 import { EdgeTouchableOpacity } from '../common/EdgeTouchableOpacity'
+import { EdgeRow } from '../rows/EdgeRow'
 import { Airship, showError, showToast } from '../services/AirshipInstance'
 import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
 import { EdgeText, Paragraph } from '../themed/EdgeText'
@@ -54,6 +56,7 @@ interface ArkadeExitOtherMethods {
     destination: string
     phase: 'sweep' | 'unroll'
   }>
+  arkadeGetUnrollFeeAddress?: () => Promise<string>
 }
 
 const formatSatsLine = (
@@ -109,6 +112,11 @@ export const ArkadeUnilateralExitModal: React.FC<Props> = props => {
   const [estimate, setEstimate] = React.useState<
     ArkadeUnilateralExitEstimate | undefined
   >()
+  const [feeAddress, setFeeAddress] = React.useState('')
+  const [feeAddressError, setFeeAddressError] = React.useState<
+    string | undefined
+  >()
+  const [loadingFeeAddress, setLoadingFeeAddress] = React.useState(true)
 
   const bitcoinWallets = React.useMemo(() => {
     return Object.values(account.currencyWallets).filter(
@@ -166,6 +174,38 @@ export const ArkadeUnilateralExitModal: React.FC<Props> = props => {
     let cancelled = false
     const otherMethods = wallet.otherMethods as ArkadeExitOtherMethods
 
+    const loadFeeAddress = async (): Promise<void> => {
+      setLoadingFeeAddress(true)
+      setFeeAddressError(undefined)
+      try {
+        if (otherMethods.arkadeGetUnrollFeeAddress == null) {
+          throw new Error(lstrings.arkade_exit_unavailable)
+        }
+        const address = await otherMethods.arkadeGetUnrollFeeAddress()
+        if (!cancelled) setFeeAddress(address)
+      } catch (error: unknown) {
+        if (!cancelled) {
+          setFeeAddress('')
+          const message = error instanceof Error ? error.message : String(error)
+          setFeeAddressError(
+            sprintf(lstrings.arkade_exit_fee_address_error_1s, message)
+          )
+        }
+      } finally {
+        if (!cancelled) setLoadingFeeAddress(false)
+      }
+    }
+
+    loadFeeAddress().catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [wallet])
+
+  React.useEffect(() => {
+    let cancelled = false
+    const otherMethods = wallet.otherMethods as ArkadeExitOtherMethods
+
     if (
       loadingDest ||
       destAddress === '' ||
@@ -207,6 +247,12 @@ export const ArkadeUnilateralExitModal: React.FC<Props> = props => {
   const handleCancel = useHandler(() => {
     if (busy) return
     bridge.resolve(false)
+  })
+
+  const handleCopyFeeAddress = useHandler(() => {
+    if (feeAddress === '') return
+    Clipboard.setString(feeAddress)
+    showToast(lstrings.fragment_copied)
   })
 
   const handlePickDestination = useHandler(async () => {
@@ -422,10 +468,29 @@ export const ArkadeUnilateralExitModal: React.FC<Props> = props => {
             lstrings.arkade_exit_timelock_bullet_1s,
             String(timelockBlocks)
           ),
-          lstrings.arkade_exit_emergency_bullet
+          lstrings.arkade_exit_emergency_bullet,
+          lstrings.arkade_exit_cpfp_fund_bullet
         ]}
         marginRem={[1, 0.5]}
       />
+
+      <EdgeCard marginRem={[0.5, 0]}>
+        {loadingFeeAddress ? (
+          <EdgeText style={styles.feeAddressHint}>
+            {lstrings.arkade_exit_fee_address_loading}
+          </EdgeText>
+        ) : feeAddressError != null ? (
+          <EdgeText style={styles.feeAddressError}>{feeAddressError}</EdgeText>
+        ) : feeAddress !== '' ? (
+          <EdgeRow
+            title={lstrings.arkade_exit_fee_address_label}
+            body={feeAddress}
+            maximumHeight="large"
+            rightButtonType="none"
+            onPress={handleCopyFeeAddress}
+          />
+        ) : null}
+      </EdgeCard>
 
       <EdgeTouchableOpacity
         disabled={!canPick}
@@ -509,6 +574,16 @@ const getStyles = cacheStyles((theme: Theme) => ({
     fontFamily: theme.fontFaceBold,
     fontSize: theme.rem(0.85),
     textAlign: 'right'
+  },
+  feeAddressHint: {
+    color: theme.secondaryText,
+    fontSize: theme.rem(0.75),
+    padding: theme.rem(0.5)
+  },
+  feeAddressError: {
+    color: theme.dangerText,
+    fontSize: theme.rem(0.75),
+    padding: theme.rem(0.5)
   },
   destRow: {
     marginTop: theme.rem(0.5),
