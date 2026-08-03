@@ -613,33 +613,23 @@ const strings = {
   arkade_exit_row: 'Unilateral Exit',
   arkade_exit_title: 'Unilateral Exit',
   arkade_exit_body:
-    'Exit all virtual funds (VTXOs) from this Arkade wallet to a Bitcoin wallet you control. Only this Arkade wallet is affected.',
-  arkade_exit_gross_label: 'Total VTXO amount',
-  arkade_exit_fee_label: 'Estimated Bitcoin network fee',
-  arkade_exit_fee_detail_2s: '~%1$s vB @ %2$s sat/vB',
-  arkade_exit_net_label: 'Net received on L1',
-  arkade_exit_calculating_fees: 'Calculating network fees…',
-  arkade_exit_high_fee_title: 'High fee impact',
-  arkade_exit_high_fee_body_1s:
-    'Network fees represent %1$s%% of your total balance. You will lose a significant portion of your funds in transaction fees.',
-  arkade_exit_uneconomical_title: 'Exit uneconomical',
-  arkade_exit_uneconomical_body:
-    'Network fees exceed your VTXO balance. This transaction cannot be executed.',
-  arkade_exit_timelock_bullet_1s:
-    'Timelock wait: ~%1$s blocks (~24 hours) before funds are spendable on L1.',
-  arkade_exit_emergency_bullet:
-    'Emergency procedure: use mainly if the Arkade operator (ASP) is not responding.',
-  arkade_exit_cpfp_fund_bullet:
-    'Unroll CPFP fees need on-chain BTC at this wallet’s P2TR key-path address below — not the Arkade boarding address (boarding funds auto-settle into Ark).',
-  arkade_exit_fee_address_label: 'Unroll fee address (P2TR key-path)',
-  arkade_exit_fee_address_loading: 'Loading fee address…',
-  arkade_exit_fee_address_error_1s: 'Could not load fee address: %1$s',
-  arkade_exit_fee_error_1s: 'Could not estimate fees: %1$s',
-  arkade_exit_success_unroll:
-    'Unilateral exit started. After the timelock, funds will sweep to your Bitcoin wallet.',
-  arkade_exit_warning_title: 'Read before confirming',
+    'Move your Arkade virtual funds (VTXOs) to a Bitcoin wallet you control when the Arkade operator is unavailable. You finish the exit on a web page — your Arkade keys stay on this phone for this step.',
+  arkade_exit_warning_title: 'Before you continue',
+  arkade_exit_steps_bullet:
+    'Save the JSON file, open the Edge exit page, import the file, then follow the funding and confirmation steps.',
+  arkade_exit_support_bullet:
+    'If you get stuck, contact Edge Support. Do not send them the JSON file.',
+  arkade_exit_secret_bullet:
+    'Never share the exit JSON with anyone — including Edge Support. Treat it like a secret.',
+  arkade_exit_prototype_bullet:
+    'Prototype: finishing on a website means sending a small fee amount to an address shown there. A future in-app exit is preferred so you do not fund a third-party site.',
   arkade_exit_destination_1s: 'Destination: %s',
-  arkade_exit_success_1s: 'Exit submitted to %s',
+  arkade_exit_save_button: 'Save exit JSON',
+  arkade_exit_save_title: 'Save Arkade exit package',
+  arkade_exit_save_success: 'Exit package ready — import it on the exit page.',
+  arkade_exit_open_executor: 'Open exit page',
+  arkade_exit_prepare_error_title: 'Could not prepare exit package',
+  arkade_exit_prepare_error_1s: '%1$s',
   arkade_exit_unavailable:
     'Unilateral exit is unavailable. Update currency plugins or reopen the wallet.',
   arkade_swap_onchain_unavailable_title: 'Cannot swap from Arkade yet',
