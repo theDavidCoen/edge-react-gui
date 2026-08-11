@@ -354,6 +354,27 @@ const strings = {
   create_wallet_import_options_passphrase: 'Seed passphrase',
   create_wallet_import_options_passphrase_description:
     'A passphrase is an optional extra word or phrase you add to your recovery seed.',
+  create_wallet_import_utxo_mode_title: 'Import type',
+  create_wallet_import_utxo_auto_instructions:
+    'Enter a BIP39 seed, Electrum seed, aezeed, SLIP39 share, or extended public key (xpub / ypub / zpub). The type is detected automatically.',
+  create_wallet_import_utxo_passphrase_toggle:
+    'This seed uses a passphrase (BIP39/Electrum 25th word, or SLIP39 extension)',
+  create_wallet_import_utxo_passphrase_hint:
+    'Passphrases are never stored. Wrong passphrase = different wallet. For aezeed, leave off unless you set a custom password (default is "aezeed").',
+  create_wallet_import_slip39_title: 'SLIP39 shares',
+  create_wallet_import_slip39_hint:
+    'Add shares one at a time until the threshold is met. You can tap Next with the last share still in the text field.',
+  create_wallet_import_slip39_add: 'Add share',
+  create_wallet_import_slip39_remove: 'Remove',
+  create_wallet_import_slip39_count: '%s share(s) collected',
+  create_wallet_import_xpub_prompt: 'Extended public key (xpub / ypub / zpub)',
+  create_wallet_import_aezeed_password: 'aezeed password (optional)',
+  watch_only_wallet_title: 'Watch-only wallet',
+  watch_only_wallet_message:
+    'This wallet was imported from an extended public key. You can view balances and receive funds, but sending is disabled because Edge does not hold the private keys.',
+  watch_only_send_blocked_title: 'Sending disabled',
+  watch_only_send_blocked_message:
+    'Watch-only wallets cannot sign transactions. Import the private seed or sweep funds to a full wallet to send.',
   create_wallet_imported_backend_title: 'Choose A Different Server',
   create_wallet_imported_backend_message:
     "Edge LWS isn't supported for imported wallets. You can use a full node or a custom LWS server.",

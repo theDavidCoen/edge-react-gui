@@ -339,7 +339,7 @@ export default [
 
       'src/components/services/SortedWalletList.ts',
       'src/components/services/StatusBarManager.tsx',
-      'src/components/services/WalletConnectService.tsx',
+
       'src/components/services/WalletLifecycle.ts',
       'src/components/services/WipeLogsService.tsx',
 

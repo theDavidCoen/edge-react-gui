@@ -63,10 +63,12 @@ import {
   removeIsoPrefix,
   zeroString
 } from '../../util/utils'
+import { isWatchOnlyWallet } from '../../util/WatchOnlyHelpers'
 import { IconButton } from '../buttons/IconButton'
 import { AlertCardUi4 } from '../cards/AlertCard'
 import { EdgeCard } from '../cards/EdgeCard'
 import { VisaCardCard } from '../cards/VisaCardCard'
+import { WatchOnlyWarningCard } from '../cards/WatchOnlyWarningCard'
 import { ZcashMigrationCard } from '../cards/ZcashMigrationCard'
 import { EdgeAnim } from '../common/EdgeAnim'
 import { EdgeTouchableOpacity } from '../common/EdgeTouchableOpacity'
@@ -112,6 +114,7 @@ interface Props {
 export const TransactionListTop: React.FC<Props> = props => {
   const { isEmpty, searching, tokenId, wallet } = props
   const navigation = useAsyncNavigation(props.navigation)
+  const watchOnly = isWatchOnlyWallet(wallet)
 
   const dispatch = useDispatch()
   const account = useSelector(state => state.core.account)
@@ -781,16 +784,18 @@ export const TransactionListTop: React.FC<Props> = props => {
             color={theme.primaryText}
           />
         </IconButton>
-        <IconButton
-          label={lstrings.fragment_send_subtitle}
-          onPress={handleSend}
-        >
-          <Ionicons
-            name="arrow-up"
-            size={theme.rem(2)}
-            color={theme.primaryText}
-          />
-        </IconButton>
+        {watchOnly ? null : (
+          <IconButton
+            label={lstrings.fragment_send_subtitle}
+            onPress={handleSend}
+          >
+            <Ionicons
+              name="arrow-up"
+              size={theme.rem(2)}
+              color={theme.primaryText}
+            />
+          </IconButton>
+        )}
         {hideStaking ? null : (
           <IconButton
             disabled={
@@ -888,6 +893,7 @@ export const TransactionListTop: React.FC<Props> = props => {
             {!isStakingAvailable ? null : renderStakedBalance()}
           </EdgeCard>
           {renderSyncStatus()}
+          {watchOnly ? <WatchOnlyWarningCard /> : null}
           {renderZcashMigrationCard()}
           {renderButtons()}
         </>

@@ -89,37 +89,38 @@ export const currencyPlugins: EdgeCorePluginsInit = {
 }
 
 export const swapPlugins = {
-  // Centralized Swaps
-  changehero: ENV.CHANGEHERO_INIT,
-  changenow: ENV.CHANGE_NOW_INIT,
-  changelly: ENV.CHANGELLY_INIT,
-  exolix: ENV.EXOLIX_INIT,
-  godex: ENV.GODEX_INIT,
-  lifi: ENV.LIFI_INIT,
-  letsexchange: ENV.LETSEXCHANGE_INIT,
-  nexchange: ENV.NEXCHANGE_INIT,
-  sideshift: ENV.SIDESHIFT_INIT,
-  swapuz: ENV.SWAPUZ_INIT,
-  xgram: ENV.XGRAM_INIT,
-  nymswap: ENV.NYM_SWAP_INIT,
+  // Disabled in the utxoextendedimport demo build: the placeholder env.json
+  // has no exchange API keys, and a failed exchange-plugin load blocks
+  // account creation. UTXO import does not need swap providers.
+  changehero: false,
+  changenow: false,
+  changelly: false,
+  exolix: false,
+  godex: false,
+  lifi: false,
+  letsexchange: false,
+  nexchange: false,
+  sideshift: false,
+  swapuz: false,
+  xgram: false,
+  nymswap: false,
 
-  // Defi Swaps
-  bridgeless: ENV.BRIDGELESS_INIT,
-  rango: ENV.RANGO_INIT,
+  bridgeless: false,
+  rango: false,
   spookySwap: false,
-  mayaprotocol: ENV.MAYA_PROTOCOL_INIT,
-  thorchain: ENV.THORCHAIN_INIT,
-  swapkit: ENV.SWAPKIT_INIT,
-  swapkitv3: ENV.SWAPKITV3_INIT,
-  tombSwap: ENV.TOMB_SWAP_INIT,
+  mayaprotocol: false,
+  thorchain: false,
+  swapkit: false,
+  swapkitv3: false,
+  tombSwap: false,
   unizen: false,
-  velodrome: true,
-  xrpdex: ENV.XRPDEX_INIT,
-  '0xgasless': ENV['0XGASLESS_INIT'],
+  velodrome: false,
+  xrpdex: false,
+  '0xgasless': false,
 
-  cosmosibc: true,
-  fantomsonicupgrade: true,
-  transfer: true
+  cosmosibc: false,
+  fantomsonicupgrade: false,
+  transfer: false
 }
 
 export const allPlugins = {

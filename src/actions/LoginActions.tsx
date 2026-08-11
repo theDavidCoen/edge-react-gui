@@ -375,6 +375,8 @@ async function createCustomWallets(
 
   // Actually create the wallets:
   const options = [...optionsMap.values()]
+  const pluginIds = [...optionsMap.keys()]
+  console.log(`createCustomWallets: creating ${pluginIds.join(', ')}`)
   const timeoutMs = Math.max(
     options.length * PER_WALLET_TIMEOUT,
     MIN_CREATE_WALLET_TIMEOUT
@@ -384,6 +386,11 @@ async function createCustomWallets(
     timeoutMs,
     new Error(lstrings.error_creating_wallets)
   ).catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(
+      `createCustomWallets failed for [${pluginIds.join(', ')}]:`,
+      message
+    )
     dispatch(logEvent('Signup_Wallets_Created_Failed', { error }))
     throw error
   })

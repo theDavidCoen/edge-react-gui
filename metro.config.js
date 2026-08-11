@@ -1,3 +1,4 @@
+const path = require('path')
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config')
 const {
   wrapWithReanimatedMetroConfig
@@ -6,6 +7,7 @@ const r3Paths = require('r3-hack')
 
 const defaultConfig = getDefaultConfig(__dirname)
 const { assetExts, sourceExts } = defaultConfig.resolver
+const currencyPluginsRoot = path.resolve(__dirname, '../edge-currency-plugins')
 
 /**
  * Metro configuration
@@ -14,6 +16,7 @@ const { assetExts, sourceExts } = defaultConfig.resolver
  * @type {import('@react-native/metro-config').MetroConfig}
  */
 const config = {
+  watchFolders: [currencyPluginsRoot],
   transformer: {
     babelTransformerPath: require.resolve(
       'react-native-svg-transformer/react-native'
@@ -44,6 +47,9 @@ const config = {
       return context.resolveRequest(context, moduleName, platform)
     },
 
+    extraNodeModules: {
+      'edge-currency-plugins': currencyPluginsRoot
+    },
     // From react-native-svg-transformer:
     assetExts: assetExts.filter(ext => ext !== 'svg'),
     sourceExts: [...sourceExts, 'svg']

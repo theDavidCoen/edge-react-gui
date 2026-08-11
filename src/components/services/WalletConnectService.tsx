@@ -26,10 +26,10 @@ interface Props {
   account: EdgeAccount
 }
 
-export const WalletConnectService = (props: Props) => {
+export const WalletConnectService = (props: Props): null => {
   const { account } = props
 
-  const handleSessionRequest = async (event: any) => {
+  const handleSessionRequest = async (event: any): Promise<void> => {
     const client = await getClient()
     const request = asSessionRequest(event)
 
@@ -92,6 +92,14 @@ export const WalletConnectService = (props: Props) => {
           projectId = ENV.WALLET_CONNECT_INIT.projectId
         }
 
+        // Placeholder env.json has WALLET_CONNECT_INIT=false / empty projectId.
+        // Skip init entirely — Core without a projectId spams errors and can
+        // surface opaque ethers "invalid arrayify value" failures.
+        if (projectId == null || projectId === '') {
+          console.log('WalletConnect skipped: missing projectId')
+          return () => {}
+        }
+
         // If init fails, retry every 2 seconds
         let retrySeconds = 0
         while (walletConnectClient.client == null) {
@@ -116,8 +124,8 @@ export const WalletConnectService = (props: Props) => {
       }
       const handleSessionRequestSync = (
         event: Web3WalletTypes.SessionRequest
-      ) => {
-        handleSessionRequest(event).catch(err => {
+      ): void => {
+        handleSessionRequest(event).catch((err: unknown) => {
           showError(err)
         })
       }

@@ -1,6 +1,6 @@
 import type { JsonObject } from 'edge-core-js'
 import * as React from 'react'
-import { Linking, Platform, View } from 'react-native'
+import { Linking, Platform, Switch, View } from 'react-native'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view'
 import { sprintf } from 'sprintf-js'
 
@@ -44,6 +44,18 @@ interface Props extends EdgeAppSceneProps<'createWalletImport'> {}
 const getOptionKey = (pluginId: string, opt: ImportKeyOption): string =>
   `${pluginId}${opt.optionName}`
 
+const hasUtxoImport = (createWalletList: WalletCreateItem[]): boolean =>
+  createWalletList.some(item => {
+    if (item.tokenId != null) return false
+    const { maxSpendTargets } = SPECIAL_CURRENCY_INFO[item.pluginId] ?? {}
+    return maxSpendTargets != null
+  })
+
+const looksLikeXpub = (text: string): boolean => {
+  const lower = text.trim().toLowerCase()
+  return /^(xpub|ypub|zpub|tpub|upub|vpub|ypub|zpub)/.test(lower)
+}
+
 const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
   const { navigation, route } = props
   const { createWalletList, walletNames, walletSettingValues } = route.params
@@ -53,7 +65,15 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
   const account = useSelector(state => state.core.account)
   const { currencyConfig } = account
 
+  const showUtxoExtendedImport = React.useMemo(
+    () => hasUtxoImport(createWalletList),
+    [createWalletList]
+  )
+
   const [importText, setImportText] = React.useState('')
+  const [usePassphrase, setUsePassphrase] = React.useState(false)
+  const [passphrase, setPassphrase] = React.useState('')
+  const [slip39Shares, setSlip39Shares] = React.useState<string[]>([])
 
   const textInputRef = React.useRef<FilledTextInputRef>(null)
 
@@ -88,7 +108,7 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
   })
 
   const disableNextButton =
-    importText.trim() === '' ||
+    (slip39Shares.length > 0 ? false : importText.trim() === '') ||
     ![...importOpts.entries()].every(([pluginId, opts]) => {
       for (const opt of [...opts]) {
         const key = getOptionKey(pluginId, opt)
@@ -119,9 +139,42 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
     }
   )
 
+  const handleAddSlip39Share = useHandler(() => {
+    const cleanShare = cleanupImportText(importText)
+    if (cleanShare === '') return
+    setSlip39Shares(prev => [...prev, cleanShare])
+    setImportText('')
+  })
+
+  const handleRemoveSlip39Share = useHandler((index: number) => {
+    setSlip39Shares(prev => prev.filter((_, i) => i !== index))
+  })
+
   const handleNext = useHandler(async () => {
     textInputRef.current?.blur()
-    const cleanImportText = cleanupImportText(importText)
+
+    // Include the share still in the text field (user often taps Next
+    // instead of "Add share" for the last share).
+    const pendingShare = cleanupImportText(importText)
+    const effectiveSlip39Shares = [...slip39Shares]
+    if (
+      showUtxoExtendedImport &&
+      pendingShare !== '' &&
+      pendingShare.split(/\s+/).length >= 20 &&
+      !effectiveSlip39Shares.includes(pendingShare)
+    ) {
+      effectiveSlip39Shares.push(pendingShare)
+    }
+    const isSlip39Import = effectiveSlip39Shares.length > 0
+    const cleanImportText = isSlip39Import
+      ? effectiveSlip39Shares[0]
+      : pendingShare
+
+    // Keep UI in sync if we consumed the pending share
+    if (effectiveSlip39Shares.length > slip39Shares.length) {
+      setSlip39Shares(effectiveSlip39Shares)
+      setImportText('')
+    }
 
     // Build keyOptions from the option values
     const allKeyOptions = new Map<string, Record<string, string | undefined>>()
@@ -133,8 +186,43 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
           value != null && value.value !== '' ? value.value : undefined
         keyOptions[opt.optionName] = input
       }
+      if (showUtxoExtendedImport) {
+        keyOptions.importMode = 'auto'
+        if (usePassphrase && passphrase !== '') {
+          keyOptions.passphrase = passphrase
+        }
+        if (isSlip39Import) {
+          keyOptions.importMode = 'slip39'
+          keyOptions.slip39Shares = JSON.stringify(effectiveSlip39Shares)
+          // SLIP39 uses its own passphrase extension (not BIP39 25th word).
+          if (usePassphrase && passphrase !== '') {
+            keyOptions.slip39Passphrase = passphrase
+          }
+        }
+      }
       allKeyOptions.set(pluginId, keyOptions)
     })
+
+    // Also attach UTXO options when the plugins have no custom importKeyOptions
+    if (showUtxoExtendedImport) {
+      const { newWalletItems } = splitCreateWalletItems(createWalletList)
+      for (const item of newWalletItems) {
+        if (allKeyOptions.has(item.pluginId)) continue
+        const keyOptions: Record<string, string | undefined> = {
+          importMode: isSlip39Import ? 'slip39' : 'auto'
+        }
+        if (usePassphrase && passphrase !== '') {
+          keyOptions.passphrase = passphrase
+        }
+        if (isSlip39Import) {
+          keyOptions.slip39Shares = JSON.stringify(effectiveSlip39Shares)
+          if (usePassphrase && passphrase !== '') {
+            keyOptions.slip39Passphrase = passphrase
+          }
+        }
+        allKeyOptions.set(item.pluginId, keyOptions)
+      }
+    }
 
     // Test imports
     const { newWalletItems } = splitCreateWalletItems(createWalletList)
@@ -243,6 +331,9 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
     [importOpts]
   )
 
+  const showPassphraseToggle =
+    showUtxoExtendedImport && !looksLikeXpub(importText)
+
   return (
     <SceneWrapper>
       <View style={styles.container}>
@@ -262,15 +353,84 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
             />
           </View>
           <Paragraph>
-            {lstrings.create_wallet_import_all_instructions}
+            {showUtxoExtendedImport
+              ? lstrings.create_wallet_import_utxo_auto_instructions
+              : lstrings.create_wallet_import_all_instructions}
           </Paragraph>
+          {showPassphraseToggle ? (
+            <>
+              <View style={styles.passphraseRow}>
+                <EdgeText style={styles.passphraseLabel}>
+                  {lstrings.create_wallet_import_utxo_passphrase_toggle}
+                </EdgeText>
+                <Switch
+                  value={usePassphrase}
+                  onValueChange={setUsePassphrase}
+                />
+              </View>
+              {usePassphrase ? (
+                <>
+                  <FilledTextInput
+                    aroundRem={0.5}
+                    value={passphrase}
+                    placeholder={
+                      lstrings.create_wallet_import_options_passphrase
+                    }
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    secureTextEntry
+                    onChangeText={setPassphrase}
+                  />
+                  <EdgeText style={styles.passphraseHint}>
+                    {lstrings.create_wallet_import_utxo_passphrase_hint}
+                  </EdgeText>
+                </>
+              ) : null}
+            </>
+          ) : null}
+          {showUtxoExtendedImport && slip39Shares.length > 0 ? (
+            <>
+              <EdgeText style={styles.sectionTitle}>
+                {lstrings.create_wallet_import_slip39_title}
+              </EdgeText>
+              <EdgeText style={styles.passphraseHint}>
+                {sprintf(
+                  lstrings.create_wallet_import_slip39_count,
+                  String(slip39Shares.length)
+                )}
+              </EdgeText>
+              {slip39Shares.map((share, index) => (
+                <View
+                  key={`${index}-${share.slice(0, 8)}`}
+                  style={styles.shareRow}
+                >
+                  <EdgeText style={styles.shareText} numberOfLines={2}>
+                    {`${index + 1}. ${share}`}
+                  </EdgeText>
+                  <EdgeTouchableOpacity
+                    onPress={() => {
+                      handleRemoveSlip39Share(index)
+                    }}
+                  >
+                    <EdgeText style={styles.shareRemove}>
+                      {lstrings.create_wallet_import_slip39_remove}
+                    </EdgeText>
+                  </EdgeTouchableOpacity>
+                </View>
+              ))}
+            </>
+          ) : null}
           <FilledTextInput
             aroundRem={0.5}
             keyboardType={keyboardType}
             value={importText}
             multiline
             numberOfLines={10}
-            placeholder={lstrings.create_wallet_import_input_key_or_seed_prompt}
+            placeholder={
+              looksLikeXpub(importText)
+                ? lstrings.create_wallet_import_xpub_prompt
+                : lstrings.create_wallet_import_input_key_or_seed_prompt
+            }
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="off"
@@ -278,6 +438,17 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
             returnKeyType="none"
             ref={textInputRef}
           />
+          {showUtxoExtendedImport &&
+          importText.trim().split(/\s+/).length >= 20 ? (
+            <EdgeTouchableOpacity
+              style={styles.addShareButton}
+              onPress={handleAddSlip39Share}
+            >
+              <EdgeText style={styles.addShareButtonText}>
+                {lstrings.create_wallet_import_slip39_add}
+              </EdgeText>
+            </EdgeTouchableOpacity>
+          ) : null}
           {importOptsEntries.length > 0 ? (
             <EdgeText style={styles.optionsHeading}>
               {lstrings.create_wallet_import_options_title}
@@ -401,21 +572,64 @@ const getStyles = cacheStyles((theme: Theme) => ({
   },
   infoButton: {
     padding: theme.rem(0.5)
+  },
+  sectionTitle: {
+    fontSize: theme.rem(0.875),
+    marginTop: theme.rem(1),
+    marginLeft: theme.rem(0.5),
+    marginBottom: theme.rem(0.25)
+  },
+  passphraseRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: theme.rem(0.5),
+    paddingHorizontal: theme.rem(0.5)
+  },
+  passphraseLabel: {
+    flex: 1,
+    fontSize: theme.rem(0.8),
+    marginRight: theme.rem(0.5)
+  },
+  passphraseHint: {
+    marginHorizontal: theme.rem(0.5),
+    marginBottom: theme.rem(0.5)
+  },
+  shareRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    marginBottom: theme.rem(0.25),
+    paddingHorizontal: theme.rem(0.5)
+  },
+  shareText: {
+    flex: 1,
+    fontSize: theme.rem(0.75)
+  },
+  shareRemove: {
+    color: theme.iconTappable,
+    fontSize: theme.rem(0.75)
+  },
+  addShareButton: {
+    alignSelf: 'flex-start',
+    marginBottom: theme.rem(0.5),
+    marginLeft: theme.rem(0.5),
+    padding: theme.rem(0.5)
+  },
+  addShareButtonText: {
+    color: theme.iconTappable,
+    fontSize: theme.rem(0.875)
   }
 }))
 
 export const CreateWalletImportScene = React.memo(CreateWalletImportComponent)
 
 export const cleanupImportText = (importText: string): string => {
-  let cleanImportText = importText.trim()
-
-  // Clean up mnemonic seeds
-  const cleanImportTextArray = cleanImportText.split(' ')
-  if (cleanImportTextArray.length > 1) {
-    cleanImportText = cleanImportTextArray
-      .filter(part => part !== '') // remove extra spaces
-      .map(word => word.toLowerCase()) // normalize capitalization
-      .join(' ')
-  }
-  return cleanImportText
+  const trimmed = importText.trim()
+  if (!trimmed.includes(' ') && !trimmed.includes('\n')) return trimmed
+  // Normalize whitespace (newlines / multi-space) for mnemonics & SLIP39 shares
+  return trimmed
+    .split(/\s+/)
+    .filter(part => part !== '')
+    .map(word => word.toLowerCase())
+    .join(' ')
 }

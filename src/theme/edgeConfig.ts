@@ -14,13 +14,10 @@ export const edgeConfig: AppConfig = {
   pendingTxLearnMoreUrl:
     'https://support.edge.app/hc/en-us/articles/43465958781723',
   zcashMigrationLearnMoreUrl: 'https://support.edge.app/articles/16111542',
-  defaultWallets: [
-    { pluginId: 'bitcoin', tokenId: null },
-    { pluginId: 'ethereum', tokenId: null },
-    { pluginId: 'litecoin', tokenId: null },
-    { pluginId: 'bitcoincash', tokenId: null },
-    { pluginId: 'dash', tokenId: null }
-  ],
+  // utxoextendedimport demo: create Bitcoin only on signup.
+  // Placeholder env.json breaks some accountbased (ethers) paths during
+  // initial wallet creation with "invalid arrayify value".
+  defaultWallets: [{ pluginId: 'bitcoin', tokenId: null }],
   forceCloseUrl:
     'https://support.edge.app/hc/en-us/articles/26702768694811-How-to-force-close-Edge-Android-and-iOS',
   ip2faSite:

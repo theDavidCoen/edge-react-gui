@@ -361,8 +361,57 @@ exports[`CreateWalletImportScene should render with loading props 1`] = `
             ]
           }
         >
-          Enter your private seed, private key, or active key to verify and restore the associated wallet
+          Enter a BIP39 seed, Electrum seed, aezeed, SLIP39 share, or extended public key (xpub / ypub / zpub). The type is detected automatically.
         </Text>
+        <View
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+              "marginVertical": 11,
+              "paddingHorizontal": 11,
+            }
+          }
+        >
+          <Text
+            adjustsFontSizeToFit={true}
+            allowFontScaling={false}
+            minimumFontScale={0.65}
+            numberOfLines={1}
+            style={
+              [
+                {
+                  "color": "#FFFFFF",
+                  "fontFamily": "Quicksand-Regular",
+                  "fontSize": 22,
+                  "includeFontPadding": false,
+                },
+                {
+                  "flex": 1,
+                  "fontSize": 18,
+                  "marginRight": 11,
+                },
+                null,
+              ]
+            }
+          >
+            This seed uses a passphrase (BIP39/Electrum 25th word, or SLIP39 extension)
+          </Text>
+          <RCTSwitch
+            accessibilityRole="switch"
+            onChange={[Function]}
+            onResponderTerminationRequest={[Function]}
+            onStartShouldSetResponder={[Function]}
+            style={
+              {
+                "height": 31,
+                "width": 51,
+              }
+            }
+            value={false}
+          />
+        </View>
         <View
           marginRemStyle={
             {

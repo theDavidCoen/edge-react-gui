@@ -73,6 +73,7 @@ import {
   DECIMAL_PRECISION,
   zeroString
 } from '../../util/utils'
+import { isWatchOnlyWallet } from '../../util/WatchOnlyHelpers'
 import { AlertCardUi4 } from '../cards/AlertCard'
 import { EdgeCard } from '../cards/EdgeCard'
 import { ErrorCard, I18nError } from '../cards/ErrorCard'
@@ -289,6 +290,22 @@ const SendComponent: React.FC<Props> = props => {
   const currencyWallets = useWatch(account, 'currencyWallets')
   const coreWallet = currencyWallets[walletId]
   const { pluginId, memoOptions = [] } = coreWallet.currencyInfo
+
+  React.useEffect(() => {
+    if (coreWallet == null || !isWatchOnlyWallet(coreWallet)) return
+    Airship.show<'ok' | undefined>(bridge => (
+      <ButtonsModal
+        bridge={bridge}
+        title={lstrings.watch_only_send_blocked_title}
+        message={lstrings.watch_only_send_blocked_message}
+        buttons={{ ok: { label: lstrings.string_ok } }}
+      />
+    ))
+      .then(() => {
+        navigation.goBack()
+      })
+      .catch(() => {})
+  }, [coreWallet, navigation])
 
   const userSettings = useWatch(coreWallet.currencyConfig, 'userSettings')
   const isNymActive =
