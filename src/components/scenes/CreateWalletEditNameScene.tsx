@@ -18,6 +18,7 @@ import { useHandler } from '../../hooks/useHandler'
 import { useWatch } from '../../hooks/useWatch'
 import { lstrings } from '../../locales/strings'
 import {
+  getExclusiveMultisigCreateItem,
   splitCreateWalletItems,
   type WalletCreateItem
 } from '../../selectors/getCreateWalletList'
@@ -147,6 +148,19 @@ const CreateWalletEditNameComponent: React.FC<Props> = props => {
   )
 
   const handleCreate = useHandler(async () => {
+    const exclusive = getExclusiveMultisigCreateItem(createWalletList)
+    if (exclusive?.mixed === true) {
+      showError(lstrings.multisig_cannot_mix_assets)
+      return
+    }
+    if (exclusive?.mixed === false) {
+      navigation.navigate('createWalletMultisig', {
+        createItem: exclusive.item,
+        walletName: walletNames[exclusive.item.key]
+      })
+      return
+    }
+
     // If only creating one wallet, do it now and return to home screen
     if (newWalletItems.length === 1 && newTokenItems.length === 0) {
       const item = newWalletItems[0]
@@ -206,6 +220,12 @@ const CreateWalletEditNameComponent: React.FC<Props> = props => {
   })
 
   const handleImport = useHandler(async () => {
+    const exclusive = getExclusiveMultisigCreateItem(createWalletList)
+    if (exclusive?.mixed === true) {
+      showError(lstrings.multisig_cannot_mix_assets)
+      return
+    }
+
     // Create copy that we can mutate
     const newWalletItemsCopy = [...newWalletItems]
 

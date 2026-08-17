@@ -152,6 +152,10 @@ export interface NotifInfo {
    */
   params?: {
     walletId?: string
+    /** Multisig invite: navigates to multisigPending on tap. */
+    proposalId?: string
+    /** Multisig spend request: navigates to multisigSpendPending on tap. */
+    spendId?: string
     /**
      * Optional object that holds information about a promo card notification.
      * Used when a promo card is dismissed from the home screen and added to the notification center.
@@ -180,6 +184,8 @@ export const asNotifInfo = asObject<NotifInfo>({
   params: asMaybe(
     asObject({
       walletId: asMaybe(asString),
+      proposalId: asMaybe(asString),
+      spendId: asMaybe(asString),
       promoCard: asMaybe(
         asObject({
           messageId: asString,

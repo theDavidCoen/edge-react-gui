@@ -26,6 +26,10 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { sprintf } from 'sprintf-js'
 
 import type { GuiExchangeRates } from '../../actions/ExchangeRateActions'
+import {
+  createMultisigSpendRequest,
+  repairMultisigOnChainAddresses
+} from '../../actions/MultisigActions'
 import { showSendScamWarningModal } from '../../actions/ScamWarningActions'
 import { checkAndShowGetCryptoModal } from '../../actions/ScanActions'
 import { playSendSound } from '../../actions/SoundActions'
@@ -67,6 +71,18 @@ import {
   getMemoLabel,
   getMemoTitle
 } from '../../util/memoUtils'
+import { refreshP2wshWatch } from '../../util/multisig/p2wshWatch'
+import {
+  buildMultisigSpendQuote,
+  getBlockbookBases,
+  getMaxP2wshSpendable,
+  type MultisigSpendQuote
+} from '../../util/multisig/spendPsbt'
+import {
+  getMultisigProposalByWalletId,
+  loadMultisigStore,
+  useMultisigProposals
+} from '../../util/multisig/store'
 import {
   convertTransactionFeeToDisplayFee,
   darkenHexColor,
@@ -243,6 +259,15 @@ const SendComponent: React.FC<Props> = props => {
   const [error, setError] = useState<unknown | undefined>(undefined)
   const [edgeTransaction, setEdgeTransaction] =
     useState<EdgeTransaction | null>(null)
+  const [multisigQuote, setMultisigQuote] = useState<MultisigSpendQuote | null>(
+    null
+  )
+  /** True when spending shared P2WSH UTXOs (PSBT path). */
+  const [useP2wshMultisigSpend, setUseP2wshMultisigSpend] = useState(false)
+  /** unknown until Blockbook check; then p2wsh-only for complete multisig. */
+  const [multisigSpendMode, setMultisigSpendMode] = useState<
+    'unknown' | 'p2wsh'
+  >('unknown')
   const [pinValue, setPinValue] = useState<string | undefined>(undefined)
   const [spendingLimitExceeded, setSpendingLimitExceeded] =
     useState<boolean>(false)
@@ -280,6 +305,21 @@ const SendComponent: React.FC<Props> = props => {
   const currencyWallets = useWatch(account, 'currencyWallets')
   const coreWallet = currencyWallets[walletId]
   const { pluginId, memoOptions = [] } = coreWallet.currencyInfo
+  const multisigProposals = useMultisigProposals()
+  const multisigProposal = multisigProposals.find(
+    item => item.walletId === walletId
+  )
+  const isCompleteMultisig =
+    multisigProposal != null && multisigProposal.status === 'complete'
+
+  useAsyncEffect(
+    async () => {
+      await loadMultisigStore(account)
+      await dispatch(repairMultisigOnChainAddresses())
+    },
+    [account],
+    'SendScene2MultisigRepair'
+  )
 
   const userSettings = useWatch(coreWallet.currencyConfig, 'userSettings')
   const isNymActive =
@@ -823,13 +863,23 @@ const SendComponent: React.FC<Props> = props => {
         feeExchangeDenomination = cryptoExchangeDenomination
       }
 
-      if (edgeTransaction != null) {
+      // Multisig P2WSH quotes set feeNativeAmount without an EdgeTransaction.
+      const feeSourceTx =
+        edgeTransaction ??
+        (feeNativeAmount !== ''
+          ? {
+              networkFee: feeNativeAmount,
+              parentNetworkFee: undefined
+            }
+          : null)
+
+      if (feeSourceTx != null) {
         const transactionFee = convertTransactionFeeToDisplayFee(
           coreWallet.currencyInfo.pluginId,
           null,
           defaultIsoFiat,
           exchangeRates,
-          edgeTransaction,
+          feeSourceTx,
           feeDisplayDenomination,
           feeExchangeDenomination
         )
@@ -848,12 +898,18 @@ const SendComponent: React.FC<Props> = props => {
       return (
         <EdgeRow
           rightButtonType={
-            noChangeMiningFee === true || lockTilesMap.fee === true
+            noChangeMiningFee === true ||
+            lockTilesMap.fee === true ||
+            useP2wshMultisigSpend
               ? 'none'
               : 'touchable'
           }
           title={`${lstrings.wc_smartcontract_network_fee}:`}
-          onPress={noChangeMiningFee === true ? undefined : handleFeesChange}
+          onPress={
+            noChangeMiningFee === true || useP2wshMultisigSpend
+              ? undefined
+              : handleFeesChange
+          }
         >
           {processingAmountChanged ? (
             <View style={styles.calcFeeView}>
@@ -1276,7 +1332,7 @@ const SendComponent: React.FC<Props> = props => {
 
   const handleSliderComplete = useHandler(
     async (resetSlider: () => void): Promise<void> => {
-      if (edgeTransaction == null) return
+      if (edgeTransaction == null && multisigQuote == null) return
       if (pinSpendingLimitsEnabled && spendingLimitExceeded) {
         const isAuthorized = await account.checkPin(pinValue ?? '')
         if (!isAuthorized) {
@@ -1309,6 +1365,34 @@ const SendComponent: React.FC<Props> = props => {
           await checkRecordSendFee(fioSender.fioWallet, fioSender.fioAddress)
         }
 
+        // Multisig PSBT path only when shared P2WSH has a quote.
+        // No password prompt — account is already unlocked; slide is confirmation.
+        if (isCompleteMultisig && useP2wshMultisigSpend) {
+          if (multisigQuote == null) {
+            throw new Error(lstrings.multisig_spend_single_sig_blocked)
+          }
+          const privateKeyMaterial = await account.getDisplayPrivateKey(
+            coreWallet.id
+          )
+          const spend = await dispatch(
+            createMultisigSpendRequest({
+              walletId: coreWallet.id,
+              destAddress: multisigQuote.destAddress,
+              amountNative: multisigQuote.amountNative,
+              privateKeyMaterial
+            })
+          )
+          if (spend.status === 'broadcast') {
+            showToast(lstrings.multisig_spend_broadcast_toast)
+          } else {
+            showToast(lstrings.multisig_spend_sent_toast)
+          }
+          // Replace Send so Done on the pending scene returns to the wallet.
+          navigation.replace('multisigSpendPending', { spendId: spend.id })
+          return
+        }
+
+        if (edgeTransaction == null) return
         const signedTx = await coreWallet.signTx(edgeTransaction)
         let broadcastedTx: EdgeTransaction
         if (alternateBroadcast != null) {
@@ -1586,8 +1670,36 @@ const SendComponent: React.FC<Props> = props => {
         }
         if (maxSpendSetter === 0) {
           spendInfo.spendTargets[0].nativeAmount = '0' // Some currencies error without a nativeAmount
-          const maxSpendable = await coreWallet.getMaxSpendable(spendInfo)
-          spendInfo.spendTargets[0].nativeAmount = maxSpendable
+          if (isCompleteMultisig) {
+            const proposal = getMultisigProposalByWalletId(walletId)
+            if (proposal?.status === 'complete') {
+              const bases = getBlockbookBases(
+                coreWallet,
+                account.currencyConfig.bitcoin
+              )
+              const watch = await refreshP2wshWatch(
+                walletId,
+                proposal,
+                coreWallet
+              )
+              const maxReceiveIndex = Math.max(
+                0,
+                watch?.maxUsedReceiveIndex ?? 0
+              )
+              const maxAmt = await getMaxP2wshSpendable({
+                proposal,
+                bases,
+                maxReceiveIndex
+              })
+              spendInfo.spendTargets[0].nativeAmount = maxAmt.toString()
+            } else {
+              const maxSpendable = await coreWallet.getMaxSpendable(spendInfo)
+              spendInfo.spendTargets[0].nativeAmount = maxSpendable
+            }
+          } else {
+            const maxSpendable = await coreWallet.getMaxSpendable(spendInfo)
+            spendInfo.spendTargets[0].nativeAmount = maxSpendable
+          }
         }
         if (spendInfo.spendTargets[0].nativeAmount == null) {
           flipInputModalRef.current?.setFees({
@@ -1650,6 +1762,58 @@ const SendComponent: React.FC<Props> = props => {
 
         makeSpendCounter.current++
         const localMakeSpendCounter = makeSpendCounter.current
+
+        // Prefer shared P2WSH PSBT when that address has UTXOs.
+        if (isCompleteMultisig) {
+          const proposal = getMultisigProposalByWalletId(walletId)
+          if (proposal == null) {
+            throw new Error(lstrings.multisig_spend_single_sig_blocked)
+          }
+          const dest = spendInfo.spendTargets[0].publicAddress
+          const amount = spendInfo.spendTargets[0].nativeAmount
+          if (dest == null || amount == null) {
+            setMultisigQuote(null)
+            setEdgeTransaction(null)
+            setProcessingAmountChanged(false)
+            return
+          }
+          const bases = getBlockbookBases(
+            coreWallet,
+            account.currencyConfig.bitcoin
+          )
+          // Fresh Blockbook scan (balance + HD indices) before building PSBT.
+          const watch = await refreshP2wshWatch(walletId, proposal, coreWallet)
+          const maxReceiveIndex = Math.max(0, watch?.maxUsedReceiveIndex ?? 0)
+          const p2wshBal = BigInt(watch?.balanceSats ?? '0')
+
+          if (p2wshBal <= 0n) {
+            throw new Error(lstrings.multisig_spend_single_sig_blocked)
+          }
+          const quote = await buildMultisigSpendQuote({
+            proposal,
+            destAddress: dest,
+            amountNative: amount,
+            bases,
+            maxReceiveIndex
+          })
+          if (localMakeSpendCounter < makeSpendCounter.current) return
+          setMultisigSpendMode('p2wsh')
+          setUseP2wshMultisigSpend(true)
+          setMultisigQuote(quote)
+          setEdgeTransaction(null)
+          setFeeNativeAmount(quote.feeNative)
+          flipInputModalRef.current?.setFees({
+            feeTokenId: null,
+            feeNativeAmount: quote.feeNative
+          })
+          flipInputModalRef.current?.setError(null)
+          setError(undefined)
+          setProcessingAmountChanged(false)
+          return
+        }
+
+        setMultisigQuote(null)
+        setUseP2wshMultisigSpend(false)
         const edgeTx = await coreWallet.makeSpend(spendInfo)
         if (localMakeSpendCounter < makeSpendCounter.current) {
           // This makeSpend result is out of date. Throw it away since a newer one is in flight.
@@ -1737,7 +1901,14 @@ const SendComponent: React.FC<Props> = props => {
       }
       setProcessingAmountChanged(false)
     },
-    [spendInfo, maxSpendSetter, walletId, pinSpendingLimitsEnabled, pinValue],
+    [
+      spendInfo,
+      maxSpendSetter,
+      walletId,
+      pinSpendingLimitsEnabled,
+      pinValue,
+      isCompleteMultisig
+    ],
     'SendComponent'
   )
 
@@ -1746,7 +1917,7 @@ const SendComponent: React.FC<Props> = props => {
   let disabledText: string | undefined
 
   if (
-    edgeTransaction == null ||
+    (edgeTransaction == null && multisigQuote == null) ||
     processingAmountChanged ||
     (zeroString(spendInfo.spendTargets[0].nativeAmount) &&
       getSpecialCurrencyInfo(pluginId).allowZeroTx !== true)
@@ -1764,6 +1935,35 @@ const SendComponent: React.FC<Props> = props => {
   if (hasPendingTx) {
     disableSlider = true
   }
+
+  const localSignedWouldMeetThreshold =
+    multisigProposal != null && multisigProposal.requiredSignatures <= 1
+  const multisigSliderConfirmText =
+    multisigSpendMode !== 'p2wsh'
+      ? undefined
+      : localSignedWouldMeetThreshold
+      ? lstrings.multisig_spend_slider_broadcast
+      : lstrings.multisig_spend_slider_request
+  const multisigBannerText = localSignedWouldMeetThreshold
+    ? lstrings.multisig_spend_banner_broadcast
+    : lstrings.multisig_spend_banner_request
+
+  // Complete multisig is always the P2WSH cosign path — do not flash the
+  // "Checking…" banner on every Send open (refresh runs in the background).
+  useAsyncEffect(
+    async () => {
+      if (!isCompleteMultisig || multisigProposal == null) {
+        setMultisigSpendMode('unknown')
+        setUseP2wshMultisigSpend(false)
+        return
+      }
+      setMultisigSpendMode('p2wsh')
+      setUseP2wshMultisigSpend(true)
+      refreshP2wshWatch(walletId, multisigProposal, coreWallet).catch(() => {})
+    },
+    [isCompleteMultisig, multisigProposal, walletId, coreWallet],
+    'SendScene2MultisigMode'
+  )
 
   const accentColors: AccentColors = {
     // Transparent fallback for while iconColor is loading
@@ -1859,12 +2059,28 @@ const SendComponent: React.FC<Props> = props => {
               {renderPendingTransactionWarning()}
               {renderNymWarning()}
               {renderError()}
+              {isCompleteMultisig ? (
+                <AlertCardUi4
+                  type="warning"
+                  title={
+                    multisigSpendMode === 'p2wsh'
+                      ? lstrings.multisig_spend_title
+                      : lstrings.fragment_send_subtitle
+                  }
+                  body={multisigBannerText}
+                />
+              ) : null}
               {sliderTopNode}
             </KeyboardAwareScrollView>
             <View style={[styles.sliderView, { bottom: sliderBottom }]}>
               {showSlider && (
                 <EdgeAnim enter={{ type: 'fadeInDown', distance: 120 }}>
                   <SafeSlider
+                    confirmText={
+                      isCompleteMultisig && multisigSpendMode === 'p2wsh'
+                        ? multisigSliderConfirmText
+                        : undefined
+                    }
                     disabledText={disabledText}
                     onSlidingComplete={handleSliderComplete}
                     disabled={disableSlider}

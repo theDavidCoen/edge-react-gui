@@ -36,6 +36,7 @@ import { ContactsLoader } from './ContactsLoader'
 import { EdgeContextCallbackManager } from './EdgeContextCallbackManager'
 import { FioService } from './FioService'
 import { LoanManagerService } from './LoanManagerService'
+import { MultisigNostrService } from './MultisigNostrService'
 import { NetworkActivity } from './NetworkActivity'
 import { NotificationService } from './NotificationService'
 import { PasswordReminderService } from './PasswordReminderService'
@@ -175,6 +176,7 @@ export const Services: React.FC<Props> = props => {
       <NetworkActivity />
       <PasswordReminderService />
       {account == null ? null : <WalletConnectService account={account} />}
+      {account == null ? null : <MultisigNostrService account={account} />}
       <WalletLifecycle />
       <WipeLogsService />
       {/* TODO: Re-connect the scene footer once we fix its performance

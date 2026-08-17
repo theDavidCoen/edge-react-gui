@@ -15,6 +15,7 @@ import { lstrings } from '../../locales/strings'
 import {
   filterWalletCreateItemListBySearchText,
   getCreateWalletList,
+  getExclusiveMultisigCreateItem,
   type MainWalletCreateItem,
   splitCreateWalletItems,
   type WalletCreateItem
@@ -179,6 +180,12 @@ const CreateWalletSelectCryptoComponent: React.FC<Props> = (props: Props) => {
     )
     const { newWalletItems, newTokenItems } =
       splitCreateWalletItems(createItems)
+
+    const exclusive = getExclusiveMultisigCreateItem(createItems)
+    if (exclusive?.mixed === true) {
+      showError(lstrings.multisig_cannot_mix_assets)
+      return
+    }
 
     // Filter duplicates
     const uniquePluginIdList = newTokenItems

@@ -21,6 +21,7 @@ import {
   isKeysOnlyPlugin
 } from '../../util/CurrencyInfoHelpers'
 import { getWalletName } from '../../util/CurrencyWalletHelpers'
+import { isCompleteMultisigWallet } from '../../util/multisig/store'
 import { EdgeTouchableOpacity } from '../common/EdgeTouchableOpacity'
 import { CryptoIcon } from '../icons/CryptoIcon'
 import { showError } from '../services/AirshipInstance'
@@ -47,6 +48,7 @@ const icons: Record<string, string> = {
   delete: 'warning',
   exportWalletTransactions: 'export',
   getRawKeys: 'lock',
+  getMultisigExport: 'export',
   getSeed: 'key',
   goToParent: 'upcircleo',
   manageTokens: 'plus',
@@ -123,6 +125,10 @@ export const WALLET_LIST_MENU: Array<{
   {
     label: lstrings.string_get_raw_keys,
     value: 'getRawKeys'
+  },
+  {
+    label: lstrings.multisig_export_recovery,
+    value: 'getMultisigExport'
   },
   {
     label: lstrings.fragment_wallets_split_wallet,
@@ -281,6 +287,12 @@ export const WalletListMenuModal: React.FC<Props> = props => {
         // still expose raw keys via the `wallet == null` branch above, so a
         // broken wallet can always be recovered regardless of this setting.
         if (value === 'getRawKeys' && !developerModeOn) continue
+
+        if (
+          value === 'getMultisigExport' &&
+          !isCompleteMultisigWallet(walletId)
+        )
+          continue
 
         result.push({ label, value })
       }

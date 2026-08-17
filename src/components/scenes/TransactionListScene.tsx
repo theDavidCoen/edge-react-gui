@@ -33,6 +33,8 @@ import type {
   WalletsTabSceneProps
 } from '../../types/routerTypes'
 import { getWalletName } from '../../util/CurrencyWalletHelpers'
+import { getMultisigProposalByWalletId } from '../../util/multisig/store'
+import { useMultisigP2wshWatch } from '../../util/multisig/useMultisigP2wshBalance'
 import { calculateSpamThreshold, unixToLocaleDateTime } from '../../util/utils'
 import { SceneWrapper } from '../common/SceneWrapper'
 import { withWallet } from '../hoc/withWallet'
@@ -97,13 +99,25 @@ const TransactionListComponent: React.FC<Props> = props => {
 
   // Transaction list state machine:
   const {
-    transactions,
-    atEnd,
+    transactions: coreTransactions,
+    atEnd: coreAtEnd,
     requestMore: handleScrollEnd
   } = useTransactionList(wallet, tokenId, {
     searchString: isSearching ? searchText : undefined,
     spamThreshold
   })
+
+  // Complete multisig: show Blockbook P2WSH history (core wallet has none).
+  const completeMultisig =
+    tokenId == null &&
+    getMultisigProposalByWalletId(wallet.id)?.status === 'complete'
+  const p2wshWatch = useMultisigP2wshWatch(wallet.id)
+  const transactions = React.useMemo(() => {
+    if (!completeMultisig) return coreTransactions
+    if (p2wshWatch != null) return p2wshWatch.transactions
+    return []
+  }, [completeMultisig, coreTransactions, p2wshWatch])
+  const atEnd = completeMultisig ? p2wshWatch != null : coreAtEnd
 
   const { isTransactionListUnsupported = false } =
     SPECIAL_CURRENCY_INFO[pluginId] ?? {}
@@ -127,10 +141,19 @@ const TransactionListComponent: React.FC<Props> = props => {
     }
 
     // If we are still loading, add a spinner at the end:
-    if (!atEnd) out.push(null)
+    // For P2WSH-backed lists we already have the full page from Blockbook.
+    if (!atEnd && !(completeMultisig && p2wshWatch != null)) {
+      out.push(null)
+    }
 
     return out
-  }, [atEnd, isTransactionListUnsupported, transactions])
+  }, [
+    atEnd,
+    completeMultisig,
+    isTransactionListUnsupported,
+    p2wshWatch,
+    transactions
+  ])
 
   const hasNamedTransactions = React.useMemo(() => {
     return transactions.some(transaction => {

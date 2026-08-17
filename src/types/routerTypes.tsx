@@ -15,6 +15,7 @@ import type { CreateWalletAccountSetupParams } from '../components/scenes/Create
 import type { CreateWalletCompletionParams } from '../components/scenes/CreateWalletCompletionScene'
 import type { CreateWalletEditNameParams } from '../components/scenes/CreateWalletEditNameScene'
 import type { CreateWalletImportParams } from '../components/scenes/CreateWalletImportScene'
+import type { CreateWalletMultisigParams } from '../components/scenes/CreateWalletMultisigScene'
 import type { CreateWalletSelectCryptoParams } from '../components/scenes/CreateWalletSelectCryptoScene'
 import type { CurrencyNotificationParams } from '../components/scenes/CurrencyNotificationScene'
 import type { CurrencySettingsParams } from '../components/scenes/CurrencySettingsScene'
@@ -48,6 +49,8 @@ import type { ManageTokensParams } from '../components/scenes/ManageTokensScene'
 import type { MigrateWalletCalculateFeeParams } from '../components/scenes/MigrateWalletCalculateFeeScene'
 import type { MigrateWalletCompletionParams } from '../components/scenes/MigrateWalletCompletionScene'
 import type { MigrateWalletSelectCryptoParams } from '../components/scenes/MigrateWalletSelectCryptoScene'
+import type { MultisigPendingParams } from '../components/scenes/MultisigPendingScene'
+import type { MultisigSpendPendingParams } from '../components/scenes/MultisigSpendPendingScene'
 import type { OtpRepairParams } from '../components/scenes/OtpRepairScene'
 import type { RampBankFormParams } from '../components/scenes/RampBankFormScene'
 import type { RampBankRoutingDetailsParams } from '../components/scenes/RampBankRoutingDetailsScene'
@@ -174,6 +177,7 @@ export type EdgeAppStackParamList = {} & {
   createWalletCompletion: CreateWalletCompletionParams
   createWalletEditName: CreateWalletEditNameParams
   createWalletImport: CreateWalletImportParams
+  createWalletMultisig: CreateWalletMultisigParams
   createWalletSelectCrypto: CreateWalletSelectCryptoParams
   createWalletSelectCryptoNewAccount: CreateWalletSelectCryptoParams
   currencyNotificationSettings: CurrencyNotificationParams
@@ -219,6 +223,9 @@ export type EdgeAppStackParamList = {} & {
   migrateWalletCalculateFee: MigrateWalletCalculateFeeParams
   migrateWalletCompletion: MigrateWalletCompletionParams
   migrateWalletSelectCrypto: MigrateWalletSelectCryptoParams
+  multisigPending: MultisigPendingParams
+  multisigSpendPending: MultisigSpendPendingParams
+  nostrAccount: undefined
   notificationSettings: undefined
   notificationCenter: undefined
   otpRepair: OtpRepairParams

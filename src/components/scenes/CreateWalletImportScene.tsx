@@ -5,6 +5,7 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import { sprintf } from 'sprintf-js'
 
 import { PLACEHOLDER_WALLET_ID } from '../../actions/CreateWalletActions'
+import { importMultisigWallet } from '../../actions/MultisigActions'
 import ImportKeySvg from '../../assets/images/import-key-icon.svg'
 import {
   type ImportKeyOption,
@@ -13,18 +14,20 @@ import {
 import { useHandler } from '../../hooks/useHandler'
 import { lstrings } from '../../locales/strings'
 import {
+  getExclusiveMultisigCreateItem,
   splitCreateWalletItems,
   type WalletCreateItem
 } from '../../selectors/getCreateWalletList'
-import { useSelector } from '../../types/reactRedux'
+import { useDispatch, useSelector } from '../../types/reactRedux'
 import type { EdgeAppSceneProps } from '../../types/routerTypes'
+import { parseImportedMultisigText } from '../../util/multisig/parseImport'
 import { SceneButtons } from '../buttons/SceneButtons'
 import { EdgeTouchableOpacity } from '../common/EdgeTouchableOpacity'
 import { SceneWrapper } from '../common/SceneWrapper'
 import { CryptoIcon } from '../icons/CryptoIcon'
 import { InformationCircleIcon } from '../icons/ThemedIcons'
 import { ButtonsModal } from '../modals/ButtonsModal'
-import { Airship, showError } from '../services/AirshipInstance'
+import { Airship, showError, showToast } from '../services/AirshipInstance'
 import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
 import { EdgeText, Paragraph } from '../themed/EdgeText'
 import {
@@ -44,16 +47,25 @@ interface Props extends EdgeAppSceneProps<'createWalletImport'> {}
 const getOptionKey = (pluginId: string, opt: ImportKeyOption): string =>
   `${pluginId}${opt.optionName}`
 
-const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
+const CreateWalletImportComponent: React.FC<Props> = props => {
   const { navigation, route } = props
   const { createWalletList, walletNames, walletSettingValues } = route.params
+  const dispatch = useDispatch()
   const theme = useTheme()
   const styles = getStyles(theme)
 
   const account = useSelector(state => state.core.account)
   const { currencyConfig } = account
 
+  const exclusive = React.useMemo(
+    () => getExclusiveMultisigCreateItem(createWalletList),
+    [createWalletList]
+  )
+  const isMultisigImport = exclusive?.mixed === false
+
   const [importText, setImportText] = React.useState('')
+  const [descriptorText, setDescriptorText] = React.useState('')
+  const [busy, setBusy] = React.useState(false)
 
   const textInputRef = React.useRef<FilledTextInputRef>(null)
 
@@ -88,7 +100,9 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
   })
 
   const disableNextButton =
+    busy ||
     importText.trim() === '' ||
+    (isMultisigImport && descriptorText.trim() === '') ||
     ![...importOpts.entries()].every(([pluginId, opts]) => {
       for (const opt of [...opts]) {
         const key = getOptionKey(pluginId, opt)
@@ -122,6 +136,44 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
   const handleNext = useHandler(async () => {
     textInputRef.current?.blur()
     const cleanImportText = cleanupImportText(importText)
+
+    if (exclusive?.mixed === true) {
+      showError(lstrings.multisig_cannot_mix_assets)
+      return
+    }
+
+    if (exclusive?.mixed === false) {
+      const imported = parseImportedMultisigText(descriptorText)
+      if (imported.kind === 'signer') {
+        showError(lstrings.multisig_import_signer_only)
+        return
+      }
+      if (imported.kind !== 'wallet') {
+        showError(lstrings.multisig_import_invalid_descriptor)
+        return
+      }
+      setBusy(true)
+      try {
+        await dispatch(
+          importMultisigWallet({
+            createItem: exclusive.item,
+            walletName: walletNames[exclusive.item.key] ?? '',
+            importText: cleanImportText,
+            descriptorText
+          })
+        )
+        showToast(lstrings.multisig_import_success)
+        navigation.navigate('edgeTabs', {
+          screen: 'walletsTab',
+          params: { screen: 'walletList' }
+        })
+      } catch (error: unknown) {
+        showError(error)
+      } finally {
+        setBusy(false)
+      }
+      return
+    }
 
     // Build keyOptions from the option values
     const allKeyOptions = new Map<string, Record<string, string | undefined>>()
@@ -278,6 +330,25 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
             returnKeyType="none"
             ref={textInputRef}
           />
+          {isMultisigImport ? (
+            <>
+              <EdgeText style={styles.optionsHeading}>
+                {lstrings.multisig_import_descriptor}
+              </EdgeText>
+              <FilledTextInput
+                aroundRem={0.5}
+                value={descriptorText}
+                multiline
+                numberOfLines={10}
+                placeholder={lstrings.multisig_import_descriptor_placeholder}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="off"
+                onChangeText={setDescriptorText}
+                returnKeyType="none"
+              />
+            </>
+          ) : null}
           {importOptsEntries.length > 0 ? (
             <EdgeText style={styles.optionsHeading}>
               {lstrings.create_wallet_import_options_title}
@@ -357,6 +428,7 @@ const CreateWalletImportComponent = (props: Props): React.JSX.Element => {
             primary={{
               label: lstrings.string_next_capitalized,
               disabled: disableNextButton,
+              spinner: busy,
               onPress: handleNext
             }}
           />

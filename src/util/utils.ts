@@ -35,6 +35,8 @@ import type { RootState } from '../types/reduxTypes'
 import type { GuiFiatType } from '../types/types'
 import { getCurrencyCode } from './CurrencyInfoHelpers'
 import { base58 } from './encoding'
+import { getEffectiveNativeBalance } from './multisig/effectiveBalance'
+import { isCompleteMultisigWallet } from './multisig/store'
 
 export const DECIMAL_PRECISION = 18
 export const DEFAULT_TRUNCATE_PRECISION = 6
@@ -360,8 +362,18 @@ export const getTotalFiatAmountFromExchangeRates = (
         wallet.currencyInfo.pluginId
       } wallet=${wallet.id.slice(0, 5)} isoFiat=${isoFiatCurrencyCode}`
     )
-    for (const tokenId of wallet.balanceMap.keys()) {
-      const nativeBalance = wallet.balanceMap.get(tokenId) ?? '0'
+    // Complete multisig may have empty bip49 balanceMap — still count P2WSH.
+    const tokenIds = new Set<EdgeTokenId>(wallet.balanceMap.keys())
+    if (isCompleteMultisigWallet(walletId)) {
+      tokenIds.add(null)
+    }
+    for (const tokenId of tokenIds) {
+      const coreBalance = wallet.balanceMap.get(tokenId) ?? '0'
+      const nativeBalance = getEffectiveNativeBalance(
+        walletId,
+        tokenId,
+        coreBalance
+      )
       const currencyCode = getCurrencyCode(wallet, tokenId)
       const rate = getExchangeRate(
         exchangeRates,
@@ -504,7 +516,9 @@ export const convertTransactionFeeToDisplayFee = (
   tokenId: EdgeTokenId,
   isoFiatCurrencyCode: string,
   exchangeRates: GuiExchangeRates,
-  transaction: EdgeTransaction,
+  transaction: Pick<EdgeTransaction, 'networkFee'> & {
+    parentNetworkFee?: string
+  },
   feeDisplayDenomination: EdgeDenomination,
   feeDefaultDenomination: EdgeDenomination
 ): {

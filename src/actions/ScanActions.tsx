@@ -34,6 +34,11 @@ import type { NavigationBase } from '../types/routerTypes'
 import { getCurrencyCode } from '../util/CurrencyInfoHelpers'
 import { parseDeepLink } from '../util/DeepLinkParser'
 import { logActivity } from '../util/logger'
+import {
+  getCachedP2wshWatch,
+  refreshP2wshWatch
+} from '../util/multisig/p2wshWatch'
+import { getMultisigProposalByWalletId } from '../util/multisig/store'
 import { runOnce } from '../util/runOnce'
 import {
   makeCurrencyCodeTable,
@@ -470,6 +475,20 @@ export function checkAndShowGetCryptoModal(
       // check if balance is zero
       const balance = wallet.balanceMap.get(tokenId)
       if (!zeroString(balance)) return // if there's a balance then early exit
+
+      // Complete Bitcoin multisig: funds live on shared P2WSH, not bip49.
+      if (tokenId == null && wallet.currencyInfo.pluginId === 'bitcoin') {
+        const { account } = getState().core
+        const { loadMultisigStore } = await import('../util/multisig/store')
+        await loadMultisigStore(account)
+        const proposal = getMultisigProposalByWalletId(wallet.id)
+        if (proposal?.status === 'complete') {
+          const snap =
+            getCachedP2wshWatch(wallet.id) ??
+            (await refreshP2wshWatch(wallet.id, proposal, wallet))
+          if (snap != null && BigInt(snap.balanceSats) > 0n) return
+        }
+      }
 
       await runOnce(`${RUNONCE_KEY_PREFIX}${wallet.id}`, async () => {
         let threeButtonModal

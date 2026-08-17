@@ -11,8 +11,9 @@ import { useWatch } from '../../hooks/useWatch'
 import { formatNumber } from '../../locales/intl'
 import { lstrings } from '../../locales/strings'
 import { getExchangeRate } from '../../selectors/WalletSelectors'
-import { useDispatch, useSelector } from '../../types/reactRedux'
+import { useDispatch, useSelector, useStore } from '../../types/reactRedux'
 import type { NavigationBase } from '../../types/routerTypes'
+import { watchP2wsh } from '../../util/multisig/p2wshWatch'
 import {
   getTotalFiatAmountFromExchangeRates,
   removeIsoPrefix,
@@ -44,10 +45,11 @@ interface Props {
 /**
  * Card that displays balance, deposit/send buttons, and a link to view assets
  */
-export const BalanceCard = (props: Props) => {
+export const BalanceCard: React.FC<Props> = props => {
   const { navigation, onViewAssetsPress } = props
 
   const dispatch = useDispatch()
+  const store = useStore()
   const theme = useTheme()
   const styles = getStyles(theme)
 
@@ -59,10 +61,21 @@ export const BalanceCard = (props: Props) => {
     state => state.ui.settings.isAccountBalanceVisible
   )
   const defaultIsoFiat = useSelector(state => state.ui.settings.defaultIsoFiat)
-  const fiatAmount = useSelector(state =>
+  // Redux-driven baseline (rates / wallet map). P2WSH lives outside Redux.
+  useSelector(state =>
     getTotalFiatAmountFromExchangeRates(state, defaultIsoFiat)
   )
   const exchangeRates = useSelector(state => state.exchangeRates)
+  const [, setP2wshTick] = React.useState(0)
+  React.useEffect(() => {
+    return watchP2wsh(() => {
+      setP2wshTick(n => n + 1)
+    })
+  }, [])
+  const fiatAmount = getTotalFiatAmountFromExchangeRates(
+    store.getState(),
+    defaultIsoFiat
+  )
 
   const activeWalletIds = useWatch(account, 'activeWalletIds')
   const currencyWallets = useWatch(account, 'currencyWallets')
@@ -72,7 +85,7 @@ export const BalanceCard = (props: Props) => {
     () =>
       activeWalletIds.every(walletId => {
         // Ignore wallets that have crashed:
-        if (currencyWalletErrors[walletId]) return true
+        if (currencyWalletErrors[walletId] != null) return true
 
         // Both the wallet and its rate need to be loaded:
         const wallet = currencyWallets[walletId]
@@ -96,7 +109,7 @@ export const BalanceCard = (props: Props) => {
   )
   const [digitHeight, setDigitHeight] = React.useState(0)
 
-  const fiatSymbol = defaultIsoFiat ? getFiatSymbol(defaultIsoFiat) : ''
+  const fiatSymbol = defaultIsoFiat !== '' ? getFiatSymbol(defaultIsoFiat) : ''
   const fiatCurrencyCode = removeIsoPrefix(defaultIsoFiat)
   const formattedFiat = isBalanceVisible
     ? formatNumber(fiatAmount, { toFixed: 2 })

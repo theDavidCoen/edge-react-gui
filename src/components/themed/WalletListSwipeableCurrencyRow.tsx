@@ -11,6 +11,7 @@ import type {
   NavigationBase,
   WalletsTabSceneProps
 } from '../../types/routerTypes'
+import { getMultisigProposalByWalletId } from '../../util/multisig/store'
 import { EdgeTouchableOpacity } from '../common/EdgeTouchableOpacity'
 import { SwipeableRowIcon } from '../icons/SwipeableRowIcon'
 import { WalletListMenuModal } from '../modals/WalletListMenuModal'
@@ -32,7 +33,7 @@ const THREE_DOTS = '...'
  * A row on the wallet list scene,
  * which can be swiped to reveal or activate various options.
  */
-function WalletListSwipeableCurrencyRowComponent(props: Props) {
+const WalletListSwipeableCurrencyRowComponent: React.FC<Props> = props => {
   const { navigation, token, tokenId, wallet } = props
 
   const rowRef = React.useRef<SwipableRowRef>(null)
@@ -45,10 +46,11 @@ function WalletListSwipeableCurrencyRowComponent(props: Props) {
   // callbacks -----------------------------------------------------------
 
   // Helper methods:
-  const closeRow = () =>
+  const closeRow = (): void => {
     setTimeout(() => {
       if (rowRef.current != null) rowRef.current.close()
     }, 150)
+  }
 
   const handleMenu = useHandler(() => {
     closeRow()
@@ -59,7 +61,7 @@ function WalletListSwipeableCurrencyRowComponent(props: Props) {
         navigation={navigation}
         walletId={wallet.id}
       />
-    )).catch(err => {
+    )).catch((err: unknown) => {
       showError(err)
     })
   })
@@ -80,7 +82,7 @@ function WalletListSwipeableCurrencyRowComponent(props: Props) {
             navigation.navigate('request', { tokenId, walletId: wallet.id })
           }
         })
-        .catch(err => {
+        .catch((err: unknown) => {
           showError(err)
         })
     }
@@ -98,13 +100,20 @@ function WalletListSwipeableCurrencyRowComponent(props: Props) {
     )
       .then(async activated => {
         if (activated) {
+          const proposal = getMultisigProposalByWalletId(wallet.id)
+          if (proposal != null && proposal.status === 'pending') {
+            navigation.navigate('multisigPending', {
+              proposalId: proposal.id
+            })
+            return
+          }
           navigation.navigate('walletDetails', {
             tokenId,
             walletId: wallet.id
           })
         }
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         showError(err)
       })
   })
@@ -131,7 +140,7 @@ function WalletListSwipeableCurrencyRowComponent(props: Props) {
           })
         }
       })
-      .catch(err => {
+      .catch((err: unknown) => {
         showError(err)
       })
   })
@@ -140,7 +149,9 @@ function WalletListSwipeableCurrencyRowComponent(props: Props) {
 
   const iconWidth = theme.rem(2.5)
 
-  const renderRequestUnderlay = (isActive: SharedValue<boolean>) => (
+  const renderRequestUnderlay = (
+    isActive: SharedValue<boolean>
+  ): React.ReactElement => (
     <>
       <EdgeTouchableOpacity style={styles.menuButton} onPress={handleMenu}>
         <UnscaledText style={styles.menuIcon}>{THREE_DOTS}</UnscaledText>
@@ -156,7 +167,9 @@ function WalletListSwipeableCurrencyRowComponent(props: Props) {
     </>
   )
 
-  const renderSendUnderlay = (isActive: SharedValue<boolean>) => (
+  const renderSendUnderlay = (
+    isActive: SharedValue<boolean>
+  ): React.ReactElement => (
     <>
       <EdgeTouchableOpacity style={styles.sendUnderlay} onPress={handleSend}>
         <SwipeableRowIcon isActive={isActive} minWidth={iconWidth}>

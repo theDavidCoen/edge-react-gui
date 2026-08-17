@@ -40,6 +40,8 @@ import type {
   WalletsTabSceneProps
 } from '../../types/routerTypes'
 import { getDisplayInfoCards } from '../../util/infoUtils'
+import { getMultisigProposalByWalletId } from '../../util/multisig/store'
+import { useMultisigP2wshWatch } from '../../util/multisig/useMultisigP2wshBalance'
 import { coinrankListData, infoServerData } from '../../util/network'
 import {
   calculateSpamThreshold,
@@ -196,10 +198,23 @@ const WalletDetailsComponent: React.FC<Props> = (props: Props) => {
   }, [exchangeDenom, exchangeRate, spamFilterOn])
 
   // Transaction list state machine:
-  const { transactions, atEnd } = useTransactionList(wallet, tokenId, {
-    searchString: isSearching ? searchText : undefined,
-    spamThreshold
-  })
+  const { transactions: coreTransactions, atEnd: coreAtEnd } =
+    useTransactionList(wallet, tokenId, {
+      searchString: isSearching ? searchText : undefined,
+      spamThreshold
+    })
+
+  // Complete multisig: Blockbook P2WSH history (core wallet has none).
+  const completeMultisig =
+    tokenId == null &&
+    getMultisigProposalByWalletId(wallet.id)?.status === 'complete'
+  const p2wshWatch = useMultisigP2wshWatch(wallet.id)
+  const transactions = React.useMemo(() => {
+    if (!completeMultisig) return coreTransactions
+    if (p2wshWatch != null) return p2wshWatch.transactions
+    return []
+  }, [completeMultisig, coreTransactions, p2wshWatch])
+  const atEnd = completeMultisig ? p2wshWatch != null : coreAtEnd
 
   const { isTransactionListUnsupported = false } =
     SPECIAL_CURRENCY_INFO[pluginId] ?? {}
@@ -442,7 +457,8 @@ const WalletDetailsComponent: React.FC<Props> = (props: Props) => {
                   />
                 ))}
               </EdgeCard>
-            ) : listItems.length === 0 && !atEnd ? (
+            ) : listItems.length === 0 &&
+              (!atEnd || (completeMultisig && p2wshWatch == null)) ? (
               <EmptyLoader />
             ) : isTransactionListUnsupported ? (
               <ExplorerCard wallet={wallet} tokenId={tokenId} />

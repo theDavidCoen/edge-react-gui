@@ -15,6 +15,14 @@ import { config } from '../../theme/appConfig'
 import { useDispatch, useSelector } from '../../types/reactRedux'
 import type { EdgeAppSceneProps, NavigationBase } from '../../types/routerTypes'
 import { getThemedIconUri } from '../../util/CdnUris.ts'
+import { resolveStoredJoinableProposalId } from '../../util/multisig/inviteResolve'
+import {
+  getProposalIdFromMultisigNotifKey,
+  getSpendIdFromMultisigNotifKey,
+  isMultisigInviteNotifKey,
+  isMultisigSpendNotifKey
+} from '../../util/multisig/notifications'
+import { loadMultisigStore } from '../../util/multisig/store'
 import { showOtpReminderModal } from '../../util/otpReminder.tsx'
 import { openBrowserUri } from '../../util/WebUtils.ts'
 import { SceneWrapper } from '../common/SceneWrapper'
@@ -28,7 +36,7 @@ import { EdgeText } from '../themed/EdgeText.tsx'
 
 type Props = EdgeAppSceneProps<'notificationCenter'>
 
-export const NotificationCenterScene = (props: Props) => {
+export const NotificationCenterScene: React.FC<Props> = props => {
   const { navigation } = props
   const theme = useTheme()
   const styles = getStyles(theme)
@@ -204,7 +212,7 @@ export const NotificationCenterScene = (props: Props) => {
             }
             const { name, currencyInfo } = wallets[walletId]
 
-            const handleCloseNewToken = async () => {
+            const handleCloseNewToken = async (): Promise<void> => {
               // Since this isn't a priority notification, we can just fully
               // complete it here
               await completeNotif(key)()
@@ -213,7 +221,7 @@ export const NotificationCenterScene = (props: Props) => {
                 data: { walletId }
               })
             }
-            const handlePressNewToken = async () => {
+            const handlePressNewToken = async (): Promise<void> => {
               await handleCloseNewToken()
               navigation.navigate('manageTokens', {
                 walletId,
@@ -242,6 +250,64 @@ export const NotificationCenterScene = (props: Props) => {
                 onClose={completeNotif(key)}
               />
             )
+          } else if (isMultisigInviteNotifKey(key)) {
+            const proposalId =
+              notifState[key].params?.proposalId ??
+              getProposalIdFromMultisigNotifKey(key)
+
+            const handleMultisigPress = async (): Promise<void> => {
+              await loadMultisigStore(account)
+              const resolved =
+                resolveStoredJoinableProposalId(proposalId) ?? proposalId
+              navigation.navigate('multisigPending', {
+                proposalId: resolved
+              })
+            }
+
+            const handleMultisigClose = async (): Promise<void> => {
+              await writeAccountNotifInfo(account, key, {
+                isBannerHidden: true
+              })
+            }
+
+            return (
+              <NotificationCenterRow
+                key={key}
+                date={date}
+                type="info"
+                title={lstrings.multisig_notif_title}
+                message={lstrings.multisig_notif_body}
+                onPress={handleMultisigPress}
+                onClose={handleMultisigClose}
+              />
+            )
+          } else if (isMultisigSpendNotifKey(key)) {
+            const spendId =
+              notifState[key].params?.spendId ??
+              getSpendIdFromMultisigNotifKey(key)
+
+            const handleSpendPress = async (): Promise<void> => {
+              await loadMultisigStore(account)
+              navigation.navigate('multisigSpendPending', { spendId })
+            }
+
+            const handleSpendClose = async (): Promise<void> => {
+              await writeAccountNotifInfo(account, key, {
+                isBannerHidden: true
+              })
+            }
+
+            return (
+              <NotificationCenterRow
+                key={key}
+                date={date}
+                type="info"
+                title={lstrings.multisig_spend_notif_title}
+                message={lstrings.multisig_spend_notif_body}
+                onPress={handleSpendPress}
+                onClose={handleSpendClose}
+              />
+            )
           } else if (key.includes('promoCard-')) {
             // Handle promo card notifications
             const { promoCard } = notifState[key].params ?? {}
@@ -257,7 +323,7 @@ export const NotificationCenterScene = (props: Props) => {
             )
               return null
 
-            const handlePromoPress = async () => {
+            const handlePromoPress = async (): Promise<void> => {
               try {
                 // If it's already marked as expired or if validation fails, just open the URL
                 // The URL could be a download link, a web page, etc.

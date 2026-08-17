@@ -27,8 +27,11 @@ import type { NavigationBase, WalletsTabSceneProps } from '../types/routerTypes'
 import { getCurrencyCode } from '../util/CurrencyInfoHelpers'
 import { getWalletName } from '../util/CurrencyWalletHelpers'
 import { logActivity } from '../util/logger'
+import { deriveLocalMultisigAccountKey } from '../util/multisig/multisigKeys'
+import { getMultisigProposalByWalletId } from '../util/multisig/store'
 import { validatePassword } from './AccountActions'
 import { showDeleteWalletModal } from './DeleteWalletModalActions'
+import { showMultisigRecoveryExport } from './MultisigExportActions'
 import { showResyncWalletModal } from './ResyncWalletModalActions'
 import { toggleUserPausedWallet } from './SettingsActions'
 
@@ -43,6 +46,7 @@ export type WalletListMenuKey =
   | 'viewXPub'
   | 'goToParent'
   | 'getRawKeys'
+  | 'getMultisigExport'
   | 'rawDelete'
   | 'togglePause'
   | string // for split keys like splitbitcoincash, splitethereum, etc.
@@ -211,6 +215,24 @@ export function walletListMenuAction(
         const { xpubExplorer } = wallet.currencyInfo
 
         const displayPublicSeed = await account.getDisplayPublicKey(wallet.id)
+        const proposal = getMultisigProposalByWalletId(walletId)
+        let multisigXpub =
+          proposal?.localXpub != null && proposal.localXpub !== ''
+            ? proposal.localXpub
+            : proposal?.cosigners.find(
+                c => c.status === 'local' && c.xpub != null && c.xpub !== ''
+              )?.xpub
+        if (proposal != null) {
+          try {
+            const live = await deriveLocalMultisigAccountKey(account, wallet.id)
+            multisigXpub = live.xpub
+          } catch {}
+        }
+        const showMultisigXpub =
+          switchString === 'viewXPub' &&
+          wallet.currencyInfo.pluginId === 'bitcoin' &&
+          multisigXpub != null
+        const copyValue = showMultisigXpub ? multisigXpub : displayPublicSeed
 
         const copy: ButtonInfo = {
           label: lstrings.fragment_request_copy_title
@@ -229,10 +251,19 @@ export function walletListMenuAction(
           <ButtonsModal
             bridge={bridge}
             buttons={buttons as { copy: ButtonInfo; link: ButtonInfo }}
-            message={displayPublicSeed}
+            message={showMultisigXpub ? undefined : displayPublicSeed}
             title={title}
           >
-            {switchString === 'viewXPub' ? null : (
+            {showMultisigXpub ? (
+              <>
+                <Paragraph numberOfLines={0}>
+                  {`${lstrings.multisig_xpub_bip48}\n${multisigXpub}`}
+                </Paragraph>
+                <Paragraph numberOfLines={0}>
+                  {`${lstrings.multisig_xpub_bip49}\n${displayPublicSeed}`}
+                </Paragraph>
+              </>
+            ) : switchString === 'viewXPub' ? null : (
               <Alert
                 type="warning"
                 title={lstrings.string_warning}
@@ -248,8 +279,10 @@ export function walletListMenuAction(
         )).then(async result => {
           switch (result) {
             case 'copy':
-              Clipboard.setString(displayPublicSeed)
-              showToast(lstrings.fragment_wallets_pubkey_copied_title)
+              if (copyValue != null && copyValue !== '') {
+                Clipboard.setString(copyValue)
+                showToast(lstrings.fragment_wallets_pubkey_copied_title)
+              }
               break
             case 'link':
               if (xpubExplorer != null) {
@@ -352,6 +385,12 @@ export function walletListMenuAction(
             />
           ))
         }
+      }
+    }
+
+    case 'getMultisigExport': {
+      return async dispatch => {
+        await dispatch(showMultisigRecoveryExport(walletId))
       }
     }
 

@@ -8,6 +8,7 @@ import type {
 
 import type { GuiExchangeRates } from '../actions/ExchangeRateActions'
 import type { RootState } from '../types/reduxTypes'
+import { getEffectiveNativeBalance } from '../util/multisig/effectiveBalance'
 import { convertNativeToExchange, zeroString } from '../util/utils'
 
 /**
@@ -114,7 +115,12 @@ export const calculateFiatBalance = (
   exchangeDenomination: EdgeDenomination,
   exchangeRates: GuiExchangeRates
 ): string => {
-  const nativeBalance = wallet.balanceMap.get(tokenId) ?? '0'
+  const coreBalance = wallet.balanceMap.get(tokenId) ?? '0'
+  const nativeBalance = getEffectiveNativeBalance(
+    wallet.id,
+    tokenId,
+    coreBalance
+  )
   if (zeroString(nativeBalance)) return '0'
   const nativeToExchangeRatio: string = exchangeDenomination.multiplier
   const cryptoAmount = convertNativeToExchange(nativeToExchangeRatio)(

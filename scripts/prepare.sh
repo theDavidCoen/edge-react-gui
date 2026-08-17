@@ -12,6 +12,7 @@ node -r sucrase/register ./scripts/configure.ts
 
 ## Fix broken packages:
 npx patch-package
+node ./scripts/patch-scure-base-utf8.js
 
 # Fix Android dependency import statments:
 # Old native Android dependencies use outdated package names for their imports

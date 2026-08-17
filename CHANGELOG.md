@@ -2,6 +2,8 @@
 
 ## Unreleased (develop)
 
+- added: Experimental Bitcoin P2WSH multisig wallets with Nostr (NIP-17) cosigner invites. Invite-card show time after login and loading after slide-to-join still need to be faster — see `docs/MULTISIG.md`.
+
 ## 4.50.0 (2026-07-21)
 
 - added: Changelly swap provider

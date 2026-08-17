@@ -44,6 +44,12 @@ import { CryptoAmount } from '../../util/CryptoAmount'
 import { isKeysOnlyPlugin } from '../../util/CurrencyInfoHelpers'
 import { triggerHaptic } from '../../util/haptic'
 import {
+  getMultisigProposalByWalletId,
+  useMultisigSpends
+} from '../../util/multisig/store'
+import { getMultisigReceiveAddress } from '../../util/multisig/types'
+import { useMultisigP2wshBalance } from '../../util/multisig/useMultisigP2wshBalance'
+import {
   getBestApyText,
   getFioStakingBalances,
   getPluginFromPolicyId,
@@ -74,6 +80,10 @@ import {
 import { Airship, showError } from '../services/AirshipInstance'
 import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
 import { EdgeText } from './EdgeText'
+import {
+  MultisigCosignerStatusCard,
+  usePendingMultisigProposal
+} from './MultisigCosignerStatusCard'
 import { SelectableRow } from './SelectableRow'
 
 const SWAP_ASSET_PRIORITY: Array<{ pluginId: string; tokenId: EdgeTokenId }> = [
@@ -145,6 +155,17 @@ export const TransactionListTop: React.FC<Props> = props => {
   )
   const isAccountBalanceVisible = useSelector(
     state => state.ui.settings.isAccountBalanceVisible
+  )
+
+  const pendingMultisig = usePendingMultisigProposal(wallet.id)
+  const isWaitingCosigners = pendingMultisig != null
+  const p2wshBalanceSats = useMultisigP2wshBalance(wallet.id)
+  const p2wshAddress = getMultisigReceiveAddress(
+    getMultisigProposalByWalletId(wallet.id)
+  )
+  const multisigSpends = useMultisigSpends()
+  const pendingSpends = multisigSpends.filter(
+    s => s.walletId === wallet.id && s.status === 'pending'
   )
 
   const isStakingAvailable =
@@ -483,7 +504,11 @@ export const TransactionListTop: React.FC<Props> = props => {
 
     const fiatSymbol = getFiatSymbol(defaultFiat)
 
-    const nativeBalance = balanceMap.get(tokenId) ?? '0'
+    // Complete multisig: show shared P2WSH balance from Blockbook (not bip49).
+    const nativeBalance =
+      tokenId == null && p2wshBalanceSats != null
+        ? p2wshBalanceSats
+        : balanceMap.get(tokenId) ?? '0'
     const cryptoAmount = convertNativeToDenomination(
       displayDenomination.multiplier
     )(nativeBalance) // convert to correct denomination
@@ -562,6 +587,11 @@ export const TransactionListTop: React.FC<Props> = props => {
               ' ' +
               defaultFiat}
           </EdgeText>
+          {p2wshAddress != null && tokenId == null ? (
+            <EdgeText style={styles.balanceFiatBalance}>
+              {lstrings.multisig_p2wsh_balance_label}
+            </EdgeText>
+          ) : null}
         </EdgeTouchableOpacity>
       </>
     )
@@ -794,8 +824,37 @@ export const TransactionListTop: React.FC<Props> = props => {
             {renderBalanceBox()}
             {!isStakingAvailable ? null : renderStakedBalance()}
           </EdgeCard>
+          {isWaitingCosigners ? (
+            <MultisigCosignerStatusCard
+              walletId={wallet.id}
+              navigation={navigation as NavigationBase}
+            />
+          ) : null}
+          {pendingSpends.map(spend => (
+            <EdgeTouchableOpacity
+              key={spend.id}
+              onPress={() => {
+                navigation.navigate('multisigSpendPending', {
+                  spendId: spend.id
+                })
+              }}
+            >
+              <EdgeCard marginRem={[0.5, 0.5, 0, 0.5]}>
+                <EdgeText>{lstrings.multisig_spend_pending_card}</EdgeText>
+                <EdgeText>
+                  {sprintf(
+                    lstrings.multisig_spend_progress_s,
+                    String(
+                      spend.signers.filter(s => s.status === 'signed').length
+                    ),
+                    String(spend.requiredSignatures)
+                  )}
+                </EdgeText>
+              </EdgeCard>
+            </EdgeTouchableOpacity>
+          ))}
           {renderSyncStatus()}
-          {renderButtons()}
+          {isWaitingCosigners ? null : renderButtons()}
         </>
       )}
       {isEmpty || searching ? null : (

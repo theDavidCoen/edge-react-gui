@@ -37,6 +37,15 @@ import {
 } from '../../util/CurrencyWalletHelpers'
 import { triggerHaptic } from '../../util/haptic'
 import {
+  getCachedMultisigReceiveAddress,
+  refreshP2wshWatch
+} from '../../util/multisig/p2wshWatch'
+import {
+  getMultisigProposalByWalletId,
+  loadMultisigStore
+} from '../../util/multisig/store'
+import { getMultisigReceiveAddress } from '../../util/multisig/types'
+import {
   convertNativeToDenomination,
   darkenHexColor,
   truncateDecimals,
@@ -136,12 +145,40 @@ interface AddressInfo {
   label: string
 }
 
+const makeMultisigReceiveAddressInfo = (address: string): AddressInfo => ({
+  addressString: address,
+  addressType: 'publicAddress',
+  label: lstrings.request_qr_your_wallet_address
+})
+
+const initialMultisigReceiveState = (
+  walletId: string,
+  wallet: EdgeCurrencyWallet | undefined
+): Pick<State, 'addresses' | 'selectedAddress'> => {
+  if (wallet?.currencyInfo.pluginId !== 'bitcoin') {
+    return { addresses: [] }
+  }
+  const cached = getCachedMultisigReceiveAddress(walletId)
+  if (cached != null) {
+    const info = makeMultisigReceiveAddressInfo(cached)
+    return { addresses: [info], selectedAddress: info }
+  }
+  const proposal = getMultisigProposalByWalletId(walletId)
+  const fallback = getMultisigReceiveAddress(proposal)
+  if (fallback != null) {
+    const info = makeMultisigReceiveAddressInfo(fallback)
+    return { addresses: [info], selectedAddress: info }
+  }
+  return { addresses: [] }
+}
+
 export class RequestSceneComponent extends React.Component<
   Props & HookProps,
   State
 > {
   flipInputRef: React.RefObject<ExchangedFlipInputRef | null>
   unsubscribeAddressChanged: (() => void) | undefined
+  unsubscribeFocus: (() => void) | undefined
 
   constructor(props: Props) {
     super(props)
@@ -153,7 +190,7 @@ export class RequestSceneComponent extends React.Component<
       }
     })
     this.state = {
-      addresses: [],
+      ...initialMultisigReceiveState(props.route.params.walletId, props.wallet),
       minimumPopupModalState,
       isFioMode: false
     }
@@ -183,10 +220,17 @@ export class RequestSceneComponent extends React.Component<
         }
       )
     }
+    // Multisig P2WSH HD index is not owned by core — refresh on every focus.
+    this.unsubscribeFocus = this.props.navigation.addListener('focus', () => {
+      this.getAddressItems().catch((err: unknown) => {
+        showError(err)
+      })
+    })
   }
 
   componentWillUnmount(): void {
     if (this.unsubscribeAddressChanged != null) this.unsubscribeAddressChanged()
+    if (this.unsubscribeFocus != null) this.unsubscribeFocus()
   }
 
   async getAddressItems(): Promise<void> {
@@ -215,6 +259,43 @@ export class RequestSceneComponent extends React.Component<
 
     const allAddresses = await wallet.getAddresses({ tokenId: null })
     const isArkade = wallet.currencyInfo.pluginId === 'ark' + 'ade'
+
+    // Complete Bitcoin multisig: only the shared P2WSH receive address (HD).
+    if (this.props.account != null) {
+      await loadMultisigStore(this.props.account)
+    }
+    const proposal = getMultisigProposalByWalletId(wallet.id)
+    if (
+      proposal?.status === 'complete' &&
+      wallet.currencyInfo.pluginId === 'bitcoin'
+    ) {
+      const applyMultisigAddress = (multisigAddress: string): void => {
+        if (this.state.selectedAddress?.addressString === multisigAddress)
+          return
+        const info = makeMultisigReceiveAddressInfo(multisigAddress)
+        this.setState({
+          addresses: [info],
+          selectedAddress: info
+        })
+      }
+
+      const cachedAddress = getCachedMultisigReceiveAddress(wallet.id)
+      if (cachedAddress != null) {
+        applyMultisigAddress(cachedAddress)
+      } else {
+        const fallback = getMultisigReceiveAddress(proposal)
+        if (fallback != null) applyMultisigAddress(fallback)
+      }
+
+      const snap = await refreshP2wshWatch(wallet.id, proposal, wallet)
+      const multisigAddress =
+        snap?.receiveAddress ?? getMultisigReceiveAddress(proposal)
+      if (multisigAddress != null) {
+        applyMultisigAddress(multisigAddress)
+      }
+      return
+    }
+
     const hasSegwitAddress =
       !isArkade &&
       allAddresses.some(address => address.addressType === 'segwitAddress')
@@ -255,11 +336,16 @@ export class RequestSceneComponent extends React.Component<
       return selectedAddress.addressString
     }
 
-    return await wallet.encodeUri({
-      currencyCode,
-      publicAddress: selectedAddress.addressString,
-      nativeAmount: amounts?.nativeAmount
-    })
+    try {
+      return await wallet.encodeUri({
+        currencyCode,
+        publicAddress: selectedAddress.addressString,
+        nativeAmount: amounts?.nativeAmount
+      })
+    } catch {
+      // Multisig P2WSH is not owned by the bip49 engine — share raw address.
+      return selectedAddress.addressString
+    }
   }
 
   componentDidUpdate(prevProps: Props, prevState: State): void {

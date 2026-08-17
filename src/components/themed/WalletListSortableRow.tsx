@@ -17,6 +17,7 @@ import {
 import { calculateFiatBalance } from '../../selectors/WalletSelectors'
 import { useDispatch, useSelector } from '../../types/reactRedux'
 import { getWalletName } from '../../util/CurrencyWalletHelpers'
+import { getEffectiveNativeBalance } from '../../util/multisig/effectiveBalance'
 import {
   DECIMAL_PRECISION,
   decimalOrZero,
@@ -31,7 +32,7 @@ interface Props {
   wallet?: EdgeCurrencyWallet
 }
 
-function WalletListSortableRowComponent(props: Props) {
+const WalletListSortableRowComponent: React.FC<Props> = props => {
   const { wallet } = props
 
   const handleDrag = useReorderableDrag()
@@ -67,7 +68,11 @@ function WalletListSortableRowComponent(props: Props) {
   const name = getWalletName(wallet)
   const symbol = displayDenomination.symbol
 
-  const balance = wallet.balanceMap.get(null) ?? '0'
+  const balance = getEffectiveNativeBalance(
+    wallet.id,
+    null,
+    wallet.balanceMap.get(null) ?? '0'
+  )
   const preliminaryCryptoAmount = truncateDecimals(
     div(balance, multiplier, DECIMAL_PRECISION)
   )
@@ -85,8 +90,8 @@ function WalletListSortableRowComponent(props: Props) {
     exchangeRates
   )
   const fiatBalanceFormat =
-    fiatBalance && gt(fiatBalance, '0.000001') ? fiatBalance : 0
-  const fiatBalanceSymbol = showBalance && fiatSymbol ? fiatSymbol : ''
+    fiatBalance !== '' && gt(fiatBalance, '0.000001') ? fiatBalance : 0
+  const fiatBalanceSymbol = showBalance && fiatSymbol !== '' ? fiatSymbol : ''
   const fiatBalanceString = showBalance
     ? formatNumber(fiatBalanceFormat, { toFixed: FIAT_PRECISION })
     : ''

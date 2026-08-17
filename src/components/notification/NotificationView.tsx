@@ -26,6 +26,14 @@ import { config } from '../../theme/appConfig'
 import { useDispatch, useSelector } from '../../types/reactRedux'
 import type { NavigationBase } from '../../types/routerTypes'
 import { getThemedIconUri } from '../../util/CdnUris'
+import { resolveStoredJoinableProposalId } from '../../util/multisig/inviteResolve'
+import {
+  getProposalIdFromMultisigNotifKey,
+  getSpendIdFromMultisigNotifKey,
+  isMultisigInviteNotifKey,
+  isMultisigSpendNotifKey
+} from '../../util/multisig/notifications'
+import { loadMultisigStore } from '../../util/multisig/store'
 import { showOtpReminderModal } from '../../util/otpReminder'
 import { openBrowserUri } from '../../util/WebUtils'
 import { styled } from '../hoc/styled'
@@ -180,6 +188,15 @@ export const NotificationView: React.FC<Props> = props => {
     if (!pwReminder.isBannerHidden && !account.isDuressAccount)
       visibleIds.push('pwReminder')
 
+    Object.keys(notifState).forEach(key => {
+      if (!isMultisigInviteNotifKey(key) && !isMultisigSpendNotifKey(key))
+        return
+      const info = notifState[key]
+      if (info != null && !info.isCompleted && !info.isBannerHidden) {
+        visibleIds.push(key)
+      }
+    })
+
     if (
       pwReminder.isBannerHidden &&
       !ip2FaReminder.isBannerHidden &&
@@ -327,6 +344,62 @@ export const NotificationView: React.FC<Props> = props => {
         )
       }
 
+      if (isMultisigInviteNotifKey(id)) {
+        const handleDismissMultisig = async (): Promise<void> => {
+          await hideBanner(account, id)
+        }
+
+        const handlePressMultisig = async (): Promise<void> => {
+          await loadMultisigStore(account)
+          const proposalId =
+            notifState[id]?.params?.proposalId ??
+            getProposalIdFromMultisigNotifKey(id)
+          const resolved =
+            resolveStoredJoinableProposalId(proposalId) ?? proposalId
+          navigation.navigate('multisigPending', { proposalId: resolved })
+          await hideBanner(account, id)
+        }
+
+        return (
+          <NotificationCard
+            key={id}
+            type="info"
+            title={lstrings.multisig_notif_title}
+            message={lstrings.multisig_notif_body}
+            onPress={handlePressMultisig}
+            onDismiss={handleDismissMultisig}
+            isPriority={isPriority}
+          />
+        )
+      }
+
+      if (isMultisigSpendNotifKey(id)) {
+        const handleDismissSpend = async (): Promise<void> => {
+          await hideBanner(account, id)
+        }
+
+        const handlePressSpend = async (): Promise<void> => {
+          await hideBanner(account, id)
+          const spendId =
+            notifState[id]?.params?.spendId ??
+            getSpendIdFromMultisigNotifKey(id)
+          await loadMultisigStore(account)
+          navigationDebounced.navigate('multisigSpendPending', { spendId })
+        }
+
+        return (
+          <NotificationCard
+            key={id}
+            type="info"
+            title={lstrings.multisig_spend_notif_title}
+            message={lstrings.multisig_spend_notif_body}
+            onPress={handlePressSpend}
+            onDismiss={handleDismissSpend}
+            isPriority={isPriority}
+          />
+        )
+      }
+
       return null
     },
     [
@@ -339,7 +412,10 @@ export const NotificationView: React.FC<Props> = props => {
       handleOtpReminderPress,
       handlePasswordReminderClose,
       handlePasswordReminderPress,
+      account,
+      navigation,
       navigationDebounced,
+      notifState,
       theme,
       wallets
     ]

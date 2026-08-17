@@ -5,6 +5,8 @@
 // no-ops and the home screen shortcuts never appear.
 import 'expo-modules-core'
 import 'react-native-gesture-handler'
+// Must run before any @scure/btc-signer PSBT encode (Hermes TextEncoder gap).
+import './src/util/ensureTextEncoding'
 import './src/app'
 import './src/perf'
 

@@ -67,6 +67,7 @@ import { CreateWalletAccountSetupScene as CreateWalletAccountSetupSceneComponent
 import { CreateWalletCompletionScene as CreateWalletCompletionSceneComponent } from './scenes/CreateWalletCompletionScene'
 import { CreateWalletEditNameScene as CreateWalletSelectFiatSceneComponent } from './scenes/CreateWalletEditNameScene'
 import { CreateWalletImportScene as CreateWalletImportSceneComponent } from './scenes/CreateWalletImportScene'
+import { CreateWalletMultisigScene as CreateWalletMultisigSceneComponent } from './scenes/CreateWalletMultisigScene'
 import { CreateWalletSelectCryptoScene as CreateWalletSelectCryptoSceneComponent } from './scenes/CreateWalletSelectCryptoScene'
 import { CurrencyNotificationScene as CurrencyNotificationSceneComponent } from './scenes/CurrencyNotificationScene'
 import { CurrencySettingsScene as CurrencySettingsSceneComponent } from './scenes/CurrencySettingsScene'
@@ -118,6 +119,9 @@ import { ManageTokensScene as ManageTokensSceneComponent } from './scenes/Manage
 import { MigrateWalletCalculateFeeScene as MigrateWalletCalculateFeeSceneComponent } from './scenes/MigrateWalletCalculateFeeScene'
 import { MigrateWalletCompletionScene as MigrateWalletCompletionSceneComponent } from './scenes/MigrateWalletCompletionScene'
 import { MigrateWalletSelectCryptoScene as MigrateWalletSelectCryptoSceneComponent } from './scenes/MigrateWalletSelectCryptoScene'
+import { MultisigPendingScene as MultisigPendingSceneComponent } from './scenes/MultisigPendingScene'
+import { MultisigSpendPendingScene as MultisigSpendPendingSceneComponent } from './scenes/MultisigSpendPendingScene'
+import { NostrAccountScene as NostrAccountSceneComponent } from './scenes/NostrAccountScene'
 import { NotificationCenterScene as NotificationCenterSceneComponent } from './scenes/NotificationCenterScene'
 import { NotificationScene as NotificationSceneComponent } from './scenes/NotificationScene'
 import { OtpRepairScene as OtpRepairSceneComponent } from './scenes/OtpRepairScene'
@@ -197,6 +201,7 @@ const CreateWalletCompletionScene = ifLoggedIn(
   CreateWalletCompletionSceneComponent
 )
 const CreateWalletImportScene = ifLoggedIn(CreateWalletImportSceneComponent)
+const CreateWalletMultisigScene = ifLoggedIn(CreateWalletMultisigSceneComponent)
 const CreateWalletSelectCryptoScene = ifLoggedIn(
   CreateWalletSelectCryptoSceneComponent
 )
@@ -265,6 +270,9 @@ const MigrateWalletCompletionScene = ifLoggedIn(
 const MigrateWalletSelectCryptoScene = ifLoggedIn(
   MigrateWalletSelectCryptoSceneComponent
 )
+const MultisigPendingScene = ifLoggedIn(MultisigPendingSceneComponent)
+const MultisigSpendPendingScene = ifLoggedIn(MultisigSpendPendingSceneComponent)
+const NostrAccountScene = ifLoggedIn(NostrAccountSceneComponent)
 const NotificationCenterScene = ifLoggedIn(NotificationCenterSceneComponent)
 const NotificationScene = ifLoggedIn(NotificationSceneComponent)
 const OtpRepairScene = ifLoggedIn(OtpRepairSceneComponent)
@@ -759,6 +767,13 @@ const EdgeAppStack: React.FC = () => {
         }}
       />
       <AppStack.Screen
+        name="createWalletMultisig"
+        component={CreateWalletMultisigScene}
+        options={{
+          headerRight: () => null
+        }}
+      />
+      <AppStack.Screen
         name="createWalletSelectCrypto"
         component={CreateWalletSelectCryptoScene}
       />
@@ -1011,6 +1026,29 @@ const EdgeAppStack: React.FC = () => {
       <AppStack.Screen
         name="migrateWalletSelectCrypto"
         component={MigrateWalletSelectCryptoScene}
+      />
+      <AppStack.Screen
+        name="multisigPending"
+        component={MultisigPendingScene}
+        options={{
+          headerRight: () => null
+        }}
+      />
+      <AppStack.Screen
+        name="multisigSpendPending"
+        component={MultisigSpendPendingScene}
+        options={{
+          title: lstrings.multisig_spend_title,
+          headerRight: () => null
+        }}
+      />
+      <AppStack.Screen
+        name="nostrAccount"
+        component={NostrAccountScene}
+        options={{
+          title: lstrings.nostr_account_title,
+          headerRight: () => null
+        }}
       />
       <AppStack.Screen
         name="notificationCenter"

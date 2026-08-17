@@ -129,7 +129,6 @@ export default [
       'src/actions/RecoveryReminderActions.tsx',
 
       'src/actions/ScamWarningActions.tsx',
-      'src/actions/ScanActions.tsx',
 
       'src/actions/SoundActions.ts',
       'src/actions/TokenTermsActions.tsx',
@@ -147,7 +146,6 @@ export default [
       'src/components/buttons/SceneButtons.tsx',
       'src/components/cards/AdvancedDetailsCard.tsx',
 
-      'src/components/cards/BalanceCard.tsx',
       'src/components/cards/EarnOptionCard.tsx',
 
       'src/components/cards/FiatAmountInputCard.tsx',
@@ -220,7 +218,7 @@ export default [
       'src/components/modals/PermissionsSettingModal.tsx',
 
       'src/components/modals/RadioListModal.tsx',
-      'src/components/modals/RawTextModal.tsx',
+
       'src/components/modals/ScamWarningModal.tsx',
       'src/components/modals/ScanModal.tsx',
       'src/components/modals/StateProvinceListModal.tsx',
@@ -302,7 +300,6 @@ export default [
 
       'src/components/scenes/ManageTokensScene.tsx',
 
-      'src/components/scenes/NotificationCenterScene.tsx',
       'src/components/scenes/NotificationScene.tsx',
 
       'src/components/scenes/OtpSettingsScene.tsx',
@@ -322,7 +319,7 @@ export default [
       'src/components/scenes/WcConnectScene.tsx',
       'src/components/scenes/WcDisconnectScene.tsx',
       'src/components/scenes/WebViewScene.tsx',
-      'src/components/services/AccountCallbackManager.tsx',
+
       'src/components/services/ActionQueueService.ts',
       'src/components/services/AirshipInstance.tsx',
       'src/components/services/AutoLogout.ts',
@@ -393,9 +390,7 @@ export default [
       'src/components/themed/WalletListLoadingRow.tsx',
       'src/components/themed/WalletListSectionHeader.tsx',
       'src/components/themed/WalletListSortable.tsx',
-      'src/components/themed/WalletListSortableRow.tsx',
 
-      'src/components/themed/WalletListSwipeableCurrencyRow.tsx',
       'src/components/themed/WalletListSwipeableLoadingRow.tsx',
 
       'src/components/tiles/AprCard.tsx',
@@ -485,7 +480,6 @@ export default [
       'src/reducers/ExchangeInfoReducer.ts',
       'src/reducers/NetworkReducer.ts',
 
-      'src/selectors/getCreateWalletList.ts',
       'src/selectors/SettingsSelectors.ts',
       'src/state/createStateProvider.tsx',
       'src/state/SceneFooterState.tsx',
@@ -518,7 +512,7 @@ export default [
       'src/util/stakeUtils.ts',
 
       'src/util/ukComplianceUtils.ts',
-      'src/util/utils.ts',
+
       'src/util/WebUtils.ts',
       'src/util/withWatchableProps.ts'
     ],

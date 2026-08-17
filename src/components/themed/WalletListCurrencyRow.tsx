@@ -12,6 +12,9 @@ import { useSelector } from '../../types/reactRedux'
 import { isKeysOnlyPlugin } from '../../util/CurrencyInfoHelpers'
 import { triggerHaptic } from '../../util/haptic'
 import { isAssetNativeToChain } from '../../util/isAbstractedAssetChain'
+import { useMultisigProposals } from '../../util/multisig/store'
+import { isWalletWaitingCosigners } from '../../util/multisig/types'
+import { useMultisigP2wshBalance } from '../../util/multisig/useMultisigP2wshBalance'
 import { EdgeCard } from '../cards/EdgeCard'
 import { EdgeTouchableOpacity } from '../common/EdgeTouchableOpacity'
 import { CryptoIcon } from '../icons/CryptoIcon'
@@ -59,6 +62,12 @@ const WalletListCurrencyRowComponent = (
   )
   const isPaused = userPausedWalletsSet?.has(wallet.id) ?? false
   const isDisabled = isKeysOnlyPlugin(wallet.currencyInfo.pluginId)
+  const multisigProposals = useMultisigProposals()
+  const isWaitingCosigners = isWalletWaitingCosigners(
+    multisigProposals,
+    wallet.id
+  )
+  const p2wshBalanceSats = useMultisigP2wshBalance(wallet.id)
   const { pluginId } = wallet.currencyInfo
   const iconColor = useIconColor({ pluginId, tokenId })
   const primaryColor = iconColor != null ? `${iconColor}30` : 'rgba(0, 0, 0, 0)'
@@ -121,8 +130,11 @@ const WalletListCurrencyRowComponent = (
     walletName
   )
 
-  // Balance:
-  const balance = nonCustomBalance
+  // Balance: complete multisig shows shared P2WSH (Blockbook), not bip49.
+  const balance =
+    tokenId == null && p2wshBalanceSats != null
+      ? p2wshBalanceSats
+      : nonCustomBalance
 
   // Display texts:
   const tickerText = (
@@ -181,9 +193,11 @@ const WalletListCurrencyRowComponent = (
     <EdgeCard
       icon={iconNode}
       overlay={
-        isPaused || isDisabled ? (
+        isPaused || isDisabled || isWaitingCosigners ? (
           <EdgeText style={styles.overlayLabel}>
-            {isPaused
+            {isWaitingCosigners
+              ? lstrings.multisig_waiting_cosigners
+              : isPaused
               ? lstrings.fragment_wallets_wallet_paused
               : lstrings.fragment_wallets_wallet_disabled}
           </EdgeText>

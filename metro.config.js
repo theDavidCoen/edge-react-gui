@@ -1,3 +1,4 @@
+const path = require('path')
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config')
 const {
   wrapWithReanimatedMetroConfig
@@ -6,6 +7,27 @@ const r3Paths = require('r3-hack')
 
 const defaultConfig = getDefaultConfig(__dirname)
 const { assetExts, sourceExts } = defaultConfig.resolver
+
+// Shared @scure/base@2.x for btc-signer / micro-packed / multisig PSBT path.
+// Without this, Metro keeps a nested 2.x copy for micro-packed while the app
+// resolves top-level 1.x — TextEncoder polyfills cannot patch the nested utf8.
+const scureBaseV2 = path.resolve(
+  __dirname,
+  'node_modules/micro-packed/node_modules/@scure/base/index.js'
+)
+
+const shouldUseScureBaseV2 = originModulePath => {
+  if (originModulePath == null || originModulePath === '') return false
+  const normalized = originModulePath.replace(/\\/g, '/')
+  return (
+    normalized.includes('/micro-packed/') ||
+    normalized.includes('/@scure/btc-signer/') ||
+    normalized.includes('/@scure/bip32/') ||
+    normalized.includes('/@scure/bip39/') ||
+    normalized.includes('/util/multisig/') ||
+    normalized.includes('/util/ensureTextEncoding')
+  )
+}
 
 /**
  * Metro configuration
@@ -21,6 +43,12 @@ const config = {
   },
   resolver: {
     resolveRequest(context, moduleName, platform) {
+      if (moduleName === '@scure/base') {
+        if (shouldUseScureBaseV2(context.originModulePath)) {
+          return { type: 'sourceFile', filePath: scureBaseV2 }
+        }
+      }
+
       if (platform === 'android') {
         // Use Reanimated 3 on Android:
         const filePath = r3Paths[moduleName]

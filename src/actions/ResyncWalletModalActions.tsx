@@ -5,6 +5,9 @@ import { Airship } from '../components/services/AirshipInstance'
 import { lstrings } from '../locales/strings'
 import type { ThunkAction } from '../types/reduxTypes'
 import { getWalletName } from '../util/CurrencyWalletHelpers'
+import { refreshP2wshWatch } from '../util/multisig/p2wshWatch'
+import { getMultisigProposalByWalletId } from '../util/multisig/store'
+import { refreshMultisigCosignerStatus } from './MultisigActions'
 
 export function showResyncWalletModal(
   walletId: string
@@ -31,7 +34,16 @@ export function showResyncWalletModal(
     )
 
     if (resolveValue === 'confirm') {
-      await wallet.resyncBlockchain()
+      const multisig = getMultisigProposalByWalletId(walletId)
+      await Promise.all([
+        wallet.resyncBlockchain(),
+        multisig != null && multisig.status === 'pending'
+          ? dispatch(refreshMultisigCosignerStatus(walletId))
+          : Promise.resolve(),
+        multisig != null && multisig.status === 'complete'
+          ? refreshP2wshWatch(walletId, multisig, wallet)
+          : Promise.resolve()
+      ])
     }
   }
 }

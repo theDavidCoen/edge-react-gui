@@ -24,6 +24,11 @@ import type { NavigationBase } from '../../types/routerTypes'
 import { getCurrencyCode } from '../../util/CurrencyInfoHelpers'
 import { parseDeepLink } from '../../util/DeepLinkParser'
 import { checkPubAddress } from '../../util/FioAddressUtils'
+import {
+  getMultisigProposalByWalletId,
+  loadMultisigStore
+} from '../../util/multisig/store'
+import { getMultisigReceiveAddress } from '../../util/multisig/types'
 import { type NameService, reverseLookupName } from '../../util/nameServices'
 import { resolveName } from '../../util/resolveName'
 import { isEmail } from '../../util/utils'
@@ -508,8 +513,20 @@ export const AddressTile2 = React.forwardRef(
               address = publicAddress
             }
           } else {
-            // Bitcoin (and others): prefer native segwit / public receive
-            address = segwitAddress ?? publicAddress
+            await loadMultisigStore(account)
+            const proposal = getMultisigProposalByWalletId(walletId)
+            let multisigAddress =
+              getMultisigReceiveAddress(proposal) ?? undefined
+            if (proposal?.status === 'complete') {
+              const { refreshP2wshWatch } = await import(
+                '../../util/multisig/p2wshWatch'
+              )
+              const snap = await refreshP2wshWatch(walletId, proposal, wallet)
+              if (snap?.receiveAddress != null) {
+                multisigAddress = snap.receiveAddress
+              }
+            }
+            address = multisigAddress ?? segwitAddress ?? publicAddress
           }
           await changeAddress(address, 'other')
         })

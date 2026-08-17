@@ -23,6 +23,10 @@ export interface WalletCreateItem {
   // Used for creating wallets:
   keyOptions?: JsonObject
   walletType?: string
+  /** Bitcoin multisig create flow (Nostr invite or xpub). */
+  isMultisig?: boolean
+  /** Extra search tokens (e.g. "multisig"). */
+  searchTerms?: string[]
 
   // Used for filtering
   assetDisplayName?: string
@@ -56,6 +60,22 @@ export const splitCreateWalletItems = (
     }
   })
   return { newWalletItems, newTokenItems }
+}
+
+/** Multisig cannot be created or imported together with other assets. */
+export const getExclusiveMultisigCreateItem = (
+  items: WalletCreateItem[]
+):
+  | { mixed: true }
+  | { mixed: false; item: MainWalletCreateItem }
+  | undefined => {
+  const { newWalletItems, newTokenItems } = splitCreateWalletItems(items)
+  const item = newWalletItems.find(wallet => wallet.isMultisig === true)
+  if (item == null) return undefined
+  if (newWalletItems.length > 1 || newTokenItems.length > 0) {
+    return { mixed: true }
+  }
+  return { mixed: false, item }
 }
 
 interface CreateWalletListOpts {
@@ -106,15 +126,15 @@ export const getCreateWalletList = (
   const excludedAssetsMap = createAssetMap(excludeAssets)
   const allowedAssetsMap = createAssetMap(allowedAssets)
 
-  const isAllowed = (pluginId: string, tokenId: EdgeTokenId) =>
+  const isAllowed = (pluginId: string, tokenId: EdgeTokenId): boolean =>
     // if the wallet already exists, then it is not allowed
-    !existingWalletsMap.get(pluginId)?.has(tokenId) &&
+    existingWalletsMap.get(pluginId)?.has(tokenId) !== true &&
     // if allowedAssets is empty, then all assets are allowed
     (allowedAssetsMap.size === 0 ||
-      allowedAssetsMap.get(pluginId)?.has(tokenId)) &&
+      allowedAssetsMap.get(pluginId)?.has(tokenId) === true) &&
     // if excludedAssets is not empty, then the asset must not be in the excluded list
     (excludedAssetsMap.size === 0 ||
-      !excludedAssetsMap.get(pluginId)?.has(tokenId))
+      excludedAssetsMap.get(pluginId)?.has(tokenId) !== true)
 
   // Add top-level wallet types:
   const newWallets: MainWalletCreateItem[] = []
@@ -125,7 +145,7 @@ export const getCreateWalletList = (
     // Prevent plugins that are "watch only" from being allowed to create new wallets
     if (isKeysOnlyPlugin(pluginId)) continue
     // Prevent currencies that needs activation from being created from a modal
-    if (filterActivation && requiresActivation(pluginId)) continue
+    if (filterActivation === true && requiresActivation(pluginId)) continue
 
     const currencyConfig = account.currencyConfig[pluginId]
     const { assetDisplayName, currencyCode, displayName, walletType } =
@@ -168,6 +188,23 @@ export const getCreateWalletList = (
           walletType
         })
       }
+
+    if (pluginId === 'bitcoin' && isAllowed(pluginId, null)) {
+      newWallets.push({
+        type: 'create',
+        key: `create-${walletType}-multisig-${pluginId}`,
+        assetDisplayName,
+        currencyCode,
+        displayName: `${displayName} (Multisig)`,
+        // Edge wallet shell stays bip49; cosigner keys use BIP-48 m/48'/0'/0'/2'.
+        keyOptions: { format: 'bip49' },
+        pluginId,
+        tokenId: null,
+        walletType,
+        isMultisig: true,
+        searchTerms: ['multisig', 'multi-sig']
+      })
+    }
 
     const { builtinTokens, currencyInfo } = currencyConfig
     const tokenIds = Object.keys(builtinTokens)
@@ -256,6 +293,13 @@ export const filterWalletCreateItemListBySearchText = (
       ) {
         return true
       }
+      if (
+        item.searchTerms?.some(extra =>
+          normalizeForSearch(extra).startsWith(term)
+        ) === true
+      ) {
+        return true
+      }
       // Search assetDisplayName for mainnet create items (also uses startsWith)
       if (
         walletType != null &&
@@ -287,7 +331,7 @@ export const filterWalletCreateItemListBySearchText = (
   return out
 }
 
-function requiresActivation(pluginId: string) {
+function requiresActivation(pluginId: string): boolean {
   const { isAccountActivationRequired = false } =
     SPECIAL_CURRENCY_INFO[pluginId] ?? {}
   return isAccountActivationRequired
