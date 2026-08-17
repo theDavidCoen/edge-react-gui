@@ -2,7 +2,7 @@
 
 ## Unreleased (develop)
 
-- added: Experimental Bitcoin P2WSH multisig wallets with Nostr (NIP-17) cosigner invites. Invite-card show time after login and loading after slide-to-join still need to be faster — see `docs/MULTISIG.md`.
+- added: Experimental Bitcoin P2WSH multisig wallets with Nostr (NIP-17) cosigner invites. Invite-card show time after login and loading after slide-to-join still need to be faster — see [edge-bitcoin-multisig](https://github.com/theDavidCoen/edge-bitcoin-multisig#11-performance--must-improve).
 
 ## 4.50.0 (2026-07-21)
 
