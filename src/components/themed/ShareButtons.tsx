@@ -23,7 +23,7 @@ export function ShareButtons(props: Props): React.ReactElement {
     <View style={styles.container}>
       <ShareButton
         icon={<PeopleIcon size={theme.rem(1.5)} color={theme.iconTappable} />}
-        text={lstrings.contacts_title}
+        text={lstrings.fragment_request_request_title}
         onPress={openContactsModal}
       />
       <ShareButton

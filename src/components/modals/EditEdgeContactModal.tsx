@@ -9,7 +9,7 @@ import { useHandler } from '../../hooks/useHandler'
 import { lstrings } from '../../locales/strings'
 import { identifierTypeLabel } from '../../util/contacts/labels'
 import { detectIdentifierType } from '../../util/contacts/match'
-import { saveEdgeContact } from '../../util/contacts/store'
+import { deleteEdgeContact, saveEdgeContact } from '../../util/contacts/store'
 import type {
   EdgeContact,
   EdgeContactIdentifier,
@@ -27,6 +27,7 @@ import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
 import { EdgeText, SmallText } from '../themed/EdgeText'
 import { ModalFilledTextInput } from '../themed/FilledTextInput'
 import { SelectableRow } from '../themed/SelectableRow'
+import { ConfirmContinueModal } from './ConfirmContinueModal'
 import { EdgeModal } from './EdgeModal'
 import { ListModal } from './ListModal'
 
@@ -39,6 +40,7 @@ interface DraftIdentifier {
 interface Props {
   bridge: AirshipBridge<EdgeContact | undefined>
   account: EdgeAccount
+  contact?: EdgeContact
   pluginId?: string
   currencyCode?: string
 }
@@ -57,15 +59,24 @@ const makeDraft = (): DraftIdentifier => ({
 })
 
 export const EditEdgeContactModal: React.FC<Props> = props => {
-  const { bridge, account, pluginId, currencyCode } = props
+  const { bridge, account, contact, pluginId, currencyCode } = props
   const theme = useTheme()
   const styles = getStyles(theme)
+  const isEditing = contact != null
 
-  const [name, setName] = React.useState('')
-  const [identifiers, setIdentifiers] = React.useState<DraftIdentifier[]>([
-    makeDraft()
-  ])
+  const [name, setName] = React.useState(contact?.name ?? '')
+  const [identifiers, setIdentifiers] = React.useState<DraftIdentifier[]>(
+    () => {
+      if (contact == null) return [makeDraft()]
+      return contact.identifiers.map(item => ({
+        id: item.id,
+        type: item.type,
+        value: item.value
+      }))
+    }
+  )
   const [saving, setSaving] = React.useState(false)
+  const [deleting, setDeleting] = React.useState(false)
 
   const handleCancel = useHandler(() => {
     bridge.resolve(undefined)
@@ -148,17 +159,17 @@ export const EditEdgeContactModal: React.FC<Props> = props => {
     }
 
     const now = Date.now()
-    const contact: EdgeContact = {
-      id: uuidv4(),
+    const nextContact: EdgeContact = {
+      id: contact?.id ?? uuidv4(),
       name: trimmedName,
       identifiers: cleaned,
-      createdAt: now,
+      createdAt: contact?.createdAt ?? now,
       updatedAt: now
     }
 
     setSaving(true)
     try {
-      const saved = await saveEdgeContact(account, contact)
+      const saved = await saveEdgeContact(account, nextContact)
       bridge.resolve(saved)
     } catch (error: unknown) {
       showError(error)
@@ -167,10 +178,37 @@ export const EditEdgeContactModal: React.FC<Props> = props => {
     }
   })
 
+  const handleDelete = useHandler(async () => {
+    if (contact == null) return
+    const approved = await Airship.show<boolean>(confirmBridge => (
+      <ConfirmContinueModal
+        bridge={confirmBridge}
+        title={lstrings.edge_contact_delete_title}
+        body={lstrings.edge_contact_delete_body}
+        warning
+      />
+    ))
+    if (!approved) return
+
+    setDeleting(true)
+    try {
+      await deleteEdgeContact(account, contact.id)
+      bridge.resolve(undefined)
+    } catch (error: unknown) {
+      showError(error)
+    } finally {
+      setDeleting(false)
+    }
+  })
+
   return (
     <EdgeModal
       bridge={bridge}
-      title={lstrings.edge_contact_new_title}
+      title={
+        isEditing
+          ? lstrings.edge_contact_edit_title
+          : lstrings.edge_contact_new_title
+      }
       onCancel={handleCancel}
       scroll
     >
@@ -231,9 +269,20 @@ export const EditEdgeContactModal: React.FC<Props> = props => {
           type="primary"
           label={lstrings.string_save}
           spinner={saving}
-          disabled={saving}
+          disabled={saving || deleting}
           onPress={handleSave}
         />
+        {isEditing ? (
+          <Space topRem={0.5}>
+            <EdgeButton
+              type="secondary"
+              label={lstrings.edge_contact_delete_title}
+              spinner={deleting}
+              disabled={saving || deleting}
+              onPress={handleDelete}
+            />
+          </Space>
+        ) : null}
       </Space>
     </EdgeModal>
   )

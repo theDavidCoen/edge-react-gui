@@ -724,7 +724,8 @@ export class RequestSceneComponent extends React.Component<
         account={account}
         walletId={wallet.id}
         currencyCode={currencyCode}
-        title={lstrings.choose_recipient_title}
+        title={lstrings.request_from_title}
+        purpose="request"
       />
     ))
     if (recipient == null || recipient === '') return

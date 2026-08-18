@@ -76,6 +76,7 @@ import { DevTestScene } from './scenes/DevTestScene'
 import { DuressModeHowToScene as DuressModeHowToSceneComponent } from './scenes/DuressModeHowToScene'
 import { DuressModeSettingScene as DuressModeSettingSceneComponent } from './scenes/DuressModeSettingScene'
 import { DuressPinScene as DuressPinSceneComponent } from './scenes/DuressPinScene'
+import { EdgeContactsScene as EdgeContactsSceneComponent } from './scenes/EdgeContactsScene'
 import { EdgeLoginScene as EdgeLoginSceneComponent } from './scenes/EdgeLoginScene'
 import { EditTokenScene as EditTokenSceneComponent } from './scenes/EditTokenScene'
 import { ExtraTabScene as ExtraTabSceneComponent } from './scenes/ExtraTabScene'
@@ -210,6 +211,7 @@ const CurrencySettingsScene = ifLoggedIn(CurrencySettingsSceneComponent)
 const DebugScene = ifLoggedIn(DebugSceneComponent)
 const DefaultFiatSettingScene = ifLoggedIn(DefaultFiatSettingSceneComponent)
 const EarnScene = ifLoggedIn(EarnSceneComponent)
+const EdgeContactsScene = ifLoggedIn(EdgeContactsSceneComponent)
 const EdgeLoginScene = ifLoggedIn(EdgeLoginSceneComponent)
 const EditTokenScene = ifLoggedIn(EditTokenSceneComponent)
 const ExtraTabScene = ifLoggedIn(ExtraTabSceneComponent)
@@ -960,6 +962,14 @@ const EdgeAppStack: React.FC = () => {
               fromParams={params => cleanBrandName(params.brand.brandName)}
             />
           )
+        }}
+      />
+      <AppStack.Screen
+        name="edgeContacts"
+        component={EdgeContactsScene}
+        options={{
+          title: lstrings.edge_contacts_settings_title,
+          headerRight: () => null
         }}
       />
       <AppStack.Screen

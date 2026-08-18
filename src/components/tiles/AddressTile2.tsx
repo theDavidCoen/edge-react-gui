@@ -411,26 +411,14 @@ export const AddressTile2 = React.forwardRef(
     })
 
     const handleChangeAddress = useHandler(async () => {
-      const nameServices: string[] = []
-      if (fioPlugin != null) nameServices.push('FIO')
-      if (coreWallet.currencyInfo.pluginId === 'ethereum')
-        nameServices.push('ENS')
-      if (coreWallet.currencyInfo.pluginId === 'zcash') nameServices.push('ZNS')
-      const title =
-        nameServices.length > 0
-          ? sprintf(
-              lstrings.scan_address_modal_title_1s,
-              nameServices.join(', ')
-            )
-          : lstrings.scan_address_modal_title
-
       Airship.show<string | undefined>(bridge => (
         <ChooseRecipientModal
           bridge={bridge}
           account={account}
           walletId={coreWallet.id}
           currencyCode={currencyCode}
-          title={title}
+          title={lstrings.choose_recipient_title}
+          purpose="send"
         />
       ))
         .then(async result => {

@@ -448,6 +448,10 @@ export const SettingsScene: React.FC<Props> = props => {
     navigation.navigate('nostrAccount')
   })
 
+  const handleEdgeContacts = useHandler((): void => {
+    navigation.navigate('edgeContacts')
+  })
+
   const handleSpendingLimits = useHandler(async (): Promise<void> => {
     if (await hasLock()) return
     navigation.navigate('spendingLimits')
@@ -619,6 +623,10 @@ export const SettingsScene: React.FC<Props> = props => {
                 disabled={isLocked}
                 label={lstrings.spending_limits}
                 onPress={handleSpendingLimits}
+              />
+              <SettingsTappableRow
+                label={lstrings.edge_contacts_settings_title}
+                onPress={handleEdgeContacts}
               />
               <SettingsTappableRow
                 disabled={isLocked}

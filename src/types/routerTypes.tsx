@@ -209,6 +209,7 @@ export type EdgeAppStackParamList = {} & {
   giftCardList: undefined
   giftCardMarket: undefined
   giftCardPurchase: GiftCardPurchaseParams
+  edgeContacts: undefined
   nostrAccount: undefined
   loanClose: LoanCloseParams
   loanCreate: LoanCreateParams

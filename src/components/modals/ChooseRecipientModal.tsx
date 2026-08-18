@@ -15,6 +15,10 @@ import {
 } from '../../util/contacts/match'
 import { loadEdgeContacts, useEdgeContacts } from '../../util/contacts/store'
 import type { EdgeContact } from '../../util/contacts/types'
+import {
+  type RecipientPurpose,
+  validateRecipientInput
+} from '../../util/contacts/validate'
 import { truncateString } from '../../util/utils'
 import { EdgeButton } from '../buttons/EdgeButton'
 import { SearchIconAnimated } from '../icons/ThemedIcons'
@@ -34,10 +38,9 @@ interface Props {
   walletId: string
   currencyCode: string
   title?: string
+  purpose?: RecipientPurpose
   isFioOnly?: boolean
 }
-
-type RecipientTab = 'contacts' | 'manual'
 
 export const ChooseRecipientModal: React.FC<Props> = props => {
   const {
@@ -46,6 +49,7 @@ export const ChooseRecipientModal: React.FC<Props> = props => {
     walletId,
     currencyCode,
     title,
+    purpose = 'send',
     isFioOnly = false
   } = props
   const theme = useTheme()
@@ -56,7 +60,7 @@ export const ChooseRecipientModal: React.FC<Props> = props => {
   const pluginId = coreWallet?.currencyInfo.pluginId ?? ''
 
   const [search, setSearch] = React.useState('')
-  const [tab, setTab] = React.useState<RecipientTab>('contacts')
+  const validatingRef = React.useRef(false)
 
   useAsyncEffect(
     async () => {
@@ -73,6 +77,12 @@ export const ChooseRecipientModal: React.FC<Props> = props => {
 
   const handleCancel = useHandler(() => {
     bridge.resolve(undefined)
+  })
+
+  const resolveValue = useHandler((value: string) => {
+    const trimmed = value.trim()
+    if (trimmed === '') return
+    bridge.resolve(trimmed)
   })
 
   const resolveContact = useHandler((contact: EdgeContact) => {
@@ -105,22 +115,69 @@ export const ChooseRecipientModal: React.FC<Props> = props => {
     if (use && uri != null) bridge.resolve(uri)
   })
 
-  const handleManualSubmit = useHandler(() => {
-    const value = search.trim()
-    if (value === '') return
-    bridge.resolve(value)
+  const tryAutoResolve = useHandler(async (value: string) => {
+    if (coreWallet == null || validatingRef.current) return
+    const trimmed = value.trim()
+    if (trimmed === '') return
+
+    validatingRef.current = true
+    try {
+      const exactContact = contacts.find(
+        contact => contact.name.trim().toLowerCase() === trimmed.toLowerCase()
+      )
+      if (exactContact != null) {
+        resolveContact(exactContact)
+        return
+      }
+
+      const isValid = await validateRecipientInput(trimmed, {
+        account,
+        coreWallet,
+        currencyCode,
+        purpose
+      })
+      if (isValid) resolveValue(trimmed)
+    } finally {
+      validatingRef.current = false
+    }
   })
 
-  const handleSearchSubmit = useHandler(() => {
-    if (tab === 'manual') {
-      handleManualSubmit()
-      return
+  const handleSearchChange = useHandler((value: string) => {
+    setSearch(value)
+  })
+
+  React.useEffect(() => {
+    const trimmed = search.trim()
+    if (trimmed === '') return
+    const timer = setTimeout(() => {
+      tryAutoResolve(search).catch(() => {})
+    }, 400)
+    return () => {
+      clearTimeout(timer)
     }
+  }, [search, tryAutoResolve])
+
+  const handleSearchSubmit = useHandler(async () => {
+    const trimmed = search.trim()
+    if (trimmed === '') return
+
     if (filtered.length === 1) {
       resolveContact(filtered[0])
       return
     }
-    if (search.trim() !== '') handleManualSubmit()
+
+    const isValid = await validateRecipientInput(trimmed, {
+      account,
+      coreWallet,
+      currencyCode,
+      purpose
+    })
+    if (isValid) {
+      resolveValue(trimmed)
+      return
+    }
+
+    resolveValue(trimmed)
   })
 
   const renderContact = ({
@@ -164,80 +221,39 @@ export const ChooseRecipientModal: React.FC<Props> = props => {
         placeholder={lstrings.choose_recipient_search_placeholder}
         returnKeyType="search"
         value={search}
-        onChangeText={setSearch}
-        onSubmitEditing={handleSearchSubmit}
+        onChangeText={handleSearchChange}
+        onSubmitEditing={() => {
+          handleSearchSubmit().catch(() => {})
+        }}
       />
-      <View style={styles.tabs}>
-        <View style={styles.tabButton}>
-          <EdgeButton
-            mini
-            type={tab === 'contacts' ? 'primary' : 'secondary'}
-            label={lstrings.choose_recipient_tab_contacts}
-            onPress={() => {
-              setTab('contacts')
-            }}
-          />
-        </View>
-        <View style={styles.tabButton}>
-          <EdgeButton
-            mini
-            type={tab === 'manual' ? 'primary' : 'secondary'}
-            label={lstrings.choose_recipient_tab_manual}
-            onPress={() => {
-              setTab('manual')
-            }}
-          />
-        </View>
-      </View>
-      {tab === 'contacts' ? (
-        <>
-          <Space horizontalRem={0.5} topRem={0.5} bottomRem={0.25}>
-            <EdgeText>{lstrings.choose_recipient_edge_contacts}</EdgeText>
+      <Space horizontalRem={0.5} topRem={0.5} bottomRem={0.25}>
+        <EdgeText>{lstrings.choose_recipient_edge_contacts}</EdgeText>
+      </Space>
+      <FlatList
+        data={filtered}
+        keyExtractor={item => item.id}
+        keyboardShouldPersistTaps="handled"
+        renderItem={renderContact}
+        scrollIndicatorInsets={SCROLL_INDICATOR_INSET_FIX}
+        style={styles.list}
+        ListEmptyComponent={
+          <Space aroundRem={0.5}>
+            <EdgeText>{lstrings.choose_recipient_empty}</EdgeText>
           </Space>
-          <FlatList
-            data={filtered}
-            keyExtractor={item => item.id}
-            keyboardShouldPersistTaps="handled"
-            renderItem={renderContact}
-            scrollIndicatorInsets={SCROLL_INDICATOR_INSET_FIX}
-            style={styles.list}
-            ListEmptyComponent={
-              <Space aroundRem={0.5}>
-                <EdgeText>{lstrings.choose_recipient_empty}</EdgeText>
-              </Space>
-            }
-          />
-          <Space aroundRem={0.5} bottomRem={1}>
-            <EdgeButton
-              type="secondary"
-              label={`+ ${lstrings.choose_recipient_add_contact}`}
-              onPress={handleAddContact}
-            />
-          </Space>
-        </>
-      ) : (
-        <Space aroundRem={0.5} bottomRem={1} topRem={0.5}>
-          <EdgeButton
-            type="primary"
-            label={lstrings.string_next_capitalized}
-            onPress={handleManualSubmit}
-          />
-        </Space>
-      )}
+        }
+      />
+      <Space aroundRem={0.5} bottomRem={1}>
+        <EdgeButton
+          type="secondary"
+          label={`+ ${lstrings.choose_recipient_add_contact}`}
+          onPress={handleAddContact}
+        />
+      </Space>
     </EdgeModal>
   )
 }
 
 const getStyles = cacheStyles((theme: Theme) => ({
-  tabs: {
-    flexDirection: 'row',
-    gap: theme.rem(0.5),
-    marginHorizontal: theme.rem(0.5),
-    marginTop: theme.rem(0.5)
-  },
-  tabButton: {
-    flex: 1
-  },
   list: {
     flexGrow: 0,
     flexShrink: 1,

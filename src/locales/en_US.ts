@@ -1429,6 +1429,8 @@ const strings = {
 
   // Private Edge contacts
   contacts_title: 'Contacts',
+  fragment_request_request_title: 'Request',
+  request_from_title: 'Request from...',
   choose_recipient_title: 'Choose Recipient',
   choose_recipient_search_placeholder: 'Name, address, npub or NIP-05',
   choose_recipient_tab_contacts: 'Contacts',
@@ -1452,6 +1454,11 @@ const strings = {
   edge_contact_saved_title: 'Contact Saved',
   edge_contact_use_recipient: 'Use this recipient',
   edge_contact_saved_footer: 'Saved privately in Edge',
+  edge_contact_edit_title: 'Edit Contact',
+  edge_contact_delete_title: 'Delete Contact',
+  edge_contact_delete_body:
+    'Remove this contact from your private Edge directory?',
+  edge_contacts_settings_title: 'Contacts',
   edge_contact_primary: 'Primary',
   edge_contact_name_required: 'Enter a name',
   edge_contact_identifier_required: 'Add at least one address',

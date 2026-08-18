@@ -2220,7 +2220,7 @@ exports[`Request should render with loaded props 1`] = `
             ]
           }
         >
-          Contacts
+          Request
         </Text>
       </View>
       <View
