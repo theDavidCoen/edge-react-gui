@@ -15,7 +15,10 @@ import { getMultisigProposalByWalletId, useMultisigProposals } from './store'
  * Returns null when not a complete multisig / still loading / fetch failed.
  */
 export const useMultisigP2wshBalance = (walletId: string): string | null => {
-  const account = useSelector(state => state.core.account)
+  const accountId = useSelector(state => state.core.account.id)
+  const wallet = useSelector(
+    state => state.core.account.currencyWallets[walletId]
+  )
   const proposals = useMultisigProposals()
   const proposal = React.useMemo(() => {
     const found =
@@ -23,17 +26,19 @@ export const useMultisigP2wshBalance = (walletId: string): string | null => {
       getMultisigProposalByWalletId(walletId)
     return found?.status === 'complete' ? found : undefined
   }, [proposals, walletId])
+  const proposalId = proposal?.id
 
   const [balanceSats, setBalanceSats] = React.useState<string | null>(
     () => getCachedP2wshWatch(walletId)?.balanceSats ?? null
   )
 
   React.useEffect(() => {
+    if (proposalId == null) return
     return watchP2wsh(event => {
       if (event.walletId !== walletId) return
       setBalanceSats(event.snapshot?.balanceSats ?? null)
     })
-  }, [walletId])
+  }, [walletId, proposalId])
 
   useAsyncEffect(
     async () => {
@@ -41,7 +46,6 @@ export const useMultisigP2wshBalance = (walletId: string): string | null => {
         setBalanceSats(null)
         return
       }
-      const wallet = account.currencyWallets[walletId]
       const snap = await refreshP2wshWatch(walletId, proposal, wallet)
       setBalanceSats(snap?.balanceSats ?? null)
       const timer = setInterval(() => {
@@ -51,7 +55,7 @@ export const useMultisigP2wshBalance = (walletId: string): string | null => {
         clearInterval(timer)
       }
     },
-    [account, proposal, walletId],
+    [accountId, proposalId, walletId],
     'useMultisigP2wshBalance'
   )
 

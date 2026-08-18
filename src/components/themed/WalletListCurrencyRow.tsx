@@ -14,7 +14,6 @@ import { triggerHaptic } from '../../util/haptic'
 import { isAssetNativeToChain } from '../../util/isAbstractedAssetChain'
 import { useMultisigProposals } from '../../util/multisig/store'
 import { isWalletWaitingCosigners } from '../../util/multisig/types'
-import { useMultisigP2wshBalance } from '../../util/multisig/useMultisigP2wshBalance'
 import { EdgeCard } from '../cards/EdgeCard'
 import { EdgeTouchableOpacity } from '../common/EdgeTouchableOpacity'
 import { CryptoIcon } from '../icons/CryptoIcon'
@@ -44,16 +43,7 @@ interface Props {
 const WalletListCurrencyRowComponent = (
   props: Props
 ): React.ReactElement | null => {
-  const {
-    customAsset,
-    token,
-    tokenId,
-    wallet,
-
-    // Callbacks:
-    onLongPress,
-    onPress
-  } = props
+  const { customAsset, token, tokenId, wallet, onLongPress, onPress } = props
   const theme = useTheme()
   const styles = getStyles(theme)
   // Shared consts (top):
@@ -67,7 +57,6 @@ const WalletListCurrencyRowComponent = (
     multisigProposals,
     wallet.id
   )
-  const p2wshBalanceSats = useMultisigP2wshBalance(wallet.id)
   const { pluginId } = wallet.currencyInfo
   const iconColor = useIconColor({ pluginId, tokenId })
   const primaryColor = iconColor != null ? `${iconColor}30` : 'rgba(0, 0, 0, 0)'
@@ -131,10 +120,7 @@ const WalletListCurrencyRowComponent = (
   )
 
   // Balance: complete multisig shows shared P2WSH (Blockbook), not bip49.
-  const balance =
-    tokenId == null && p2wshBalanceSats != null
-      ? p2wshBalanceSats
-      : nonCustomBalance
+  const balance = nonCustomBalance
 
   // Display texts:
   const tickerText = (

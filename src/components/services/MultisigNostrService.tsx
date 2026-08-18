@@ -25,7 +25,8 @@ import {
   getCachedMultisigProposals,
   loadMultisigStore,
   upsertMultisigProposal,
-  useMultisigProposals
+  useMultisigProposals,
+  waitForNostrIdentity
 } from '../../util/multisig/store'
 import { formatMultisigWalletName } from '../../util/multisig/types'
 import { decodeNpub, hexToBytes } from '../../util/nostr/bech32Keys'
@@ -34,7 +35,6 @@ import {
   loadNostrDedupStore,
   markNostrEventSeen
 } from '../../util/nostr/dedupStore'
-import { ensureNostrIdentity } from '../../util/nostr/identity'
 import { unwrapGift } from '../../util/nostr/nip17'
 import {
   fetchNostrProfiles,
@@ -128,6 +128,12 @@ export const MultisigNostrService: React.FC<Props> = props => {
       if (!isActive()) return
       await loadNostrDedupStore(account)
       if (!isActive()) return
+
+      // Do not create a Nostr key or hit relays for accounts that never
+      // used multisig — that opened ~9 sockets and stalled wallet sync.
+      if (getCachedMultisigIdentity() == null) return
+      if (getCachedMultisigProposals().length === 0) return
+
       await dispatch(cleanupOrphanedMultisigWallets())
       if (!isActive()) return
       await dispatch(repairMultisigOnChainAddresses())
@@ -137,12 +143,12 @@ export const MultisigNostrService: React.FC<Props> = props => {
       await dispatch(flushMultisigNostrOutbox())
       if (!isActive()) return
 
-      const ensured = await ensureNostrIdentity(account)
-      if (!isActive()) return
-      seedProfileFromIdentity(ensured)
+      const identity = getCachedMultisigIdentity()
+      if (identity == null || !isActive()) return
+      seedProfileFromIdentity(identity)
       refreshOwnNostrProfile(account).catch(() => {})
 
-      const knownNpubs = new Set<string>([ensured.npub])
+      const knownNpubs = new Set<string>([identity.npub])
       for (const proposal of getCachedMultisigProposals()) {
         knownNpubs.add(proposal.initiatorNpub)
         for (const cosigner of proposal.cosigners) {
@@ -199,9 +205,13 @@ export const MultisigNostrService: React.FC<Props> = props => {
       if (!isActive()) return
       await loadNostrDedupStore(account)
       if (!isActive()) return
+
+      // Idle until the user actually has a Nostr identity (Create Multisig
+      // or Settings). Auto-creating keys on every login made the whole app
+      // wait on Damus/nos.lol/Primal even for accounts with no multisig.
       const ensured =
-        getCachedMultisigIdentity() ?? (await ensureNostrIdentity(account))
-      if (!isActive()) return
+        getCachedMultisigIdentity() ?? (await waitForNostrIdentity(isActive))
+      if (ensured == null || !isActive()) return
       await showJoinableInviteBanners(account)
       if (!isActive()) return
 

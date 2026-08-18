@@ -4,6 +4,7 @@ import { sprintf } from 'sprintf-js'
 
 import {
   approveMultisigSpend,
+  cancelExpiredMultisigSwapSpend,
   rejectMultisigSpend
 } from '../../actions/MultisigActions'
 import { useAsyncEffect } from '../../hooks/useAsyncEffect'
@@ -18,10 +19,12 @@ import {
 } from '../../util/multisig/store'
 import { spendSignedCount } from '../../util/multisig/types'
 import { ButtonsView } from '../buttons/ButtonsView'
+import { AlertCardUi4 } from '../cards/AlertCard'
 import { EdgeCard } from '../cards/EdgeCard'
 import { SceneWrapper } from '../common/SceneWrapper'
 import { Space } from '../layout/Space'
 import { ButtonsModal } from '../modals/ButtonsModal'
+import { CircleTimer } from '../progress-indicators/CircleTimer'
 import { EdgeRow } from '../rows/EdgeRow'
 import { Airship, showError, showToast } from '../services/AirshipInstance'
 import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
@@ -142,6 +145,20 @@ export const MultisigSpendPendingScene: React.FC<Props> = props => {
     }
   })
 
+  const handleSwapTimerExpired = useHandler(async () => {
+    if (spend == null || spend.isSwap !== true) return
+    await dispatch(cancelExpiredMultisigSwapSpend(spend.id)).catch(() => {})
+    await Airship.show<'ok' | undefined>(bridge => (
+      <ButtonsModal
+        bridge={bridge}
+        title={lstrings.multisig_swap_expired_title}
+        message={lstrings.multisig_swap_expired_body}
+        buttons={{ ok: { label: lstrings.string_ok } }}
+      />
+    ))
+    navigation.pop()
+  })
+
   const handleReject = useHandler(async () => {
     if (spend == null) return
     const result = await Airship.show<'confirm' | 'cancel' | undefined>(
@@ -215,7 +232,23 @@ export const MultisigSpendPendingScene: React.FC<Props> = props => {
             String(spend.requiredSignatures)
           )}
         </Paragraph>
-        {spend.status === 'pending' ? (
+        {spend.status === 'pending' &&
+        spend.isSwap === true &&
+        spend.expiresAt != null ? (
+          <>
+            <AlertCardUi4
+              title={lstrings.multisig_swap_cosign_required_title}
+              body={lstrings.multisig_swap_cosign_required_body}
+              type="warning"
+            />
+            <CircleTimer
+              timeExpired={() => {
+                handleSwapTimerExpired().catch(() => {})
+              }}
+              expiration={new Date(spend.expiresAt)}
+            />
+          </>
+        ) : spend.status === 'pending' ? (
           <Paragraph>
             {wouldBroadcast
               ? lstrings.multisig_spend_banner_broadcast

@@ -527,6 +527,12 @@ const strings = {
   multisig_import_success: 'Multisig wallet imported',
   multisig_xpub_bip48: 'Multisig XPub (BIP-48)',
   multisig_xpub_bip49: 'Wallet XPub (BIP-49)',
+  multisig_swap_cosign_required_title: 'Co-signer approval required',
+  multisig_swap_cosign_required_body:
+    'Swapping from a multisig wallet sends a signature request to the other cosigners. The transaction will be broadcast only after enough signatures are collected — or cancelled if no one signs within 5 minutes.',
+  multisig_swap_expired_title: 'Swap expired',
+  multisig_swap_expired_body:
+    'The swap was not signed by all required cosigners within 5 minutes and has been cancelled.',
   nostr_account_title: 'Nostr Account',
   nostr_account_npub_body:
     'Your Nostr public key (npub) is used for encrypted multisig invites.',

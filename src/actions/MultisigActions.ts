@@ -1156,6 +1156,10 @@ export const createMultisigSpendRequest = (opts: {
   destAddress: string
   amountNative: string
   privateKeyMaterial: string
+  /** Optional expiry timestamp (Unix ms) for swap-spends. */
+  expiresAt?: number
+  /** Mark this spend as originating from a swap. */
+  isSwap?: true
 }): ThunkAction<Promise<MultisigSpendProposal>> => {
   return async (_dispatch, getState) => {
     const { account } = getState().core
@@ -1214,7 +1218,9 @@ export const createMultisigSpendRequest = (opts: {
       feeNative: quote.feeNative,
       initiatorNpub: identity.npub,
       txid: undefined,
-      signers
+      signers,
+      ...(opts.expiresAt != null ? { expiresAt: opts.expiresAt } : {}),
+      ...(opts.isSwap === true ? { isSwap: true as const } : {})
     }
 
     if (spendSignedCount(spend) >= spend.requiredSignatures) {
@@ -1258,7 +1264,9 @@ export const createMultisigSpendRequest = (opts: {
       destAddress: spend.destAddress,
       feeNative: spend.feeNative,
       initiatorNpub: identity.npub,
-      signers: spend.signers
+      signers: spend.signers,
+      expiresAt: spend.expiresAt,
+      isSwap: spend.isSwap
     }
     await publishToNpubs(
       account,
@@ -1267,6 +1275,59 @@ export const createMultisigSpendRequest = (opts: {
       cosignerNpubs(proposal).filter(n => n !== identity.npub)
     )
     return spend
+  }
+}
+
+const MULTISIG_SWAP_TTL_MS = 5 * 60 * 1000
+
+/**
+ * Like createMultisigSpendRequest but marks the spend as a swap that must be
+ * co-signed within 5 minutes. After the deadline the spend is automatically
+ * set to 'cancelled' and cosigners can no longer sign it.
+ */
+export const requestMultisigSwapSpend = (opts: {
+  walletId: string
+  destAddress: string
+  amountNative: string
+  privateKeyMaterial: string
+}): ThunkAction<Promise<MultisigSpendProposal>> => {
+  return async (dispatch, getState) => {
+    const expiresAt = Date.now() + MULTISIG_SWAP_TTL_MS
+    const spend = await dispatch(
+      createMultisigSpendRequest({
+        walletId: opts.walletId,
+        destAddress: opts.destAddress,
+        amountNative: opts.amountNative,
+        privateKeyMaterial: opts.privateKeyMaterial,
+        expiresAt,
+        isSwap: true
+      })
+    )
+    if (spend.status !== 'broadcast') {
+      const remaining = expiresAt - Date.now()
+      if (remaining > 0) {
+        setTimeout(() => {
+          dispatch(cancelExpiredMultisigSwapSpend(spend.id)).catch(() => {})
+        }, remaining)
+      }
+    }
+    return spend
+  }
+}
+
+/**
+ * Cancels a swap spend proposal that was not co-signed in time.
+ * Sets status to 'cancelled'; does not broadcast or notify cosigners.
+ */
+export const cancelExpiredMultisigSwapSpend = (
+  spendId: string
+): ThunkAction<Promise<void>> => {
+  return async (_dispatch, getState) => {
+    const { account } = getState().core
+    await loadMultisigStore(account)
+    const spend = getMultisigSpend(spendId)
+    if (spend == null || spend.status !== 'pending') return
+    await upsertMultisigSpend(account, { ...spend, status: 'cancelled' })
   }
 }
 
@@ -1414,6 +1475,8 @@ const ingestSpendRequest = async (
   msg: MultisigSpendRequestMessage
 ): Promise<boolean> => {
   if (msg.initiatorNpub === localNpub) return false
+  // Drop expired swap-spend requests before persisting
+  if (msg.expiresAt != null && Date.now() > msg.expiresAt) return false
   if (await isSpendHandshakeSeen(account, msg.spendId, msg.walletProposalId)) {
     const existing = getMultisigSpend(msg.spendId)
     if (existing != null && existing.status !== 'pending') return false
@@ -1443,7 +1506,9 @@ const ingestSpendRequest = async (
     feeNative: msg.feeNative,
     initiatorNpub: msg.initiatorNpub,
     txid: undefined,
-    signers: msg.signers
+    signers: msg.signers,
+    ...(msg.expiresAt != null ? { expiresAt: msg.expiresAt } : {}),
+    ...(msg.isSwap === true ? { isSwap: true as const } : {})
   }
   await upsertMultisigSpend(account, spend)
   await markSpendHandshakeSeen(account, msg.spendId, msg.walletProposalId)
@@ -1458,6 +1523,10 @@ const ingestSpendPartial = async (
   msg: MultisigSpendPartialMessage
 ): Promise<boolean> => {
   const existing = getMultisigSpend(msg.spendId)
+  // Drop partial signatures arriving after a swap-spend expiry
+  if (existing?.expiresAt != null && Date.now() > existing.expiresAt) {
+    return false
+  }
   if (existing == null) {
     // Late join: store minimal pending spend from partial
     const walletProposal = getMultisigProposal(msg.walletProposalId)

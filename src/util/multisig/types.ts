@@ -150,7 +150,12 @@ export const asMultisigSpendSigner = asObject({
 })
 export type MultisigSpendSigner = ReturnType<typeof asMultisigSpendSigner>
 
-export const asMultisigSpendStatus = asValue('pending', 'broadcast', 'rejected')
+export const asMultisigSpendStatus = asValue(
+  'pending',
+  'broadcast',
+  'rejected',
+  'cancelled'
+)
 export type MultisigSpendStatus = ReturnType<typeof asMultisigSpendStatus>
 
 export const asMultisigSpendProposal = asObject({
@@ -167,7 +172,11 @@ export const asMultisigSpendProposal = asObject({
   feeNative: asString,
   initiatorNpub: asString,
   txid: asOptional(asString),
-  signers: asArray(asMultisigSpendSigner)
+  signers: asArray(asMultisigSpendSigner),
+  /** Unix ms after which a swap-spend is automatically cancelled (swap only). */
+  expiresAt: asOptional(asNumber),
+  /** True when this spend was created as part of a swap (requires co-sign within expiresAt). */
+  isSwap: asOptional(asValue(true as const))
 })
 export interface MultisigSpendProposal {
   id: string
@@ -184,6 +193,10 @@ export interface MultisigSpendProposal {
   initiatorNpub: string
   txid?: string
   signers: MultisigSpendSigner[]
+  /** Unix ms after which a swap-spend is automatically cancelled (swap only). */
+  expiresAt?: number
+  /** True when this spend was created as part of a swap. */
+  isSwap?: true
 }
 
 export const asMultisigSpendProposals = asArray(asMultisigSpendProposal)
@@ -201,7 +214,9 @@ export const asMultisigSpendRequestMessage = asObject({
   destAddress: asString,
   feeNative: asString,
   initiatorNpub: asString,
-  signers: asArray(asMultisigSpendSigner)
+  signers: asArray(asMultisigSpendSigner),
+  expiresAt: asOptional(asNumber),
+  isSwap: asOptional(asValue(true as const))
 })
 export type MultisigSpendRequestMessage = ReturnType<
   typeof asMultisigSpendRequestMessage

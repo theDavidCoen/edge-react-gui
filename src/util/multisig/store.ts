@@ -93,6 +93,32 @@ export const getCachedMultisigProposals = (): MultisigProposals =>
 export const getCachedMultisigIdentity = (): NostrIdentity | null =>
   cachedIdentity
 
+/** Resolves when a Nostr identity exists, or null if `isCancelled` becomes true. */
+export const waitForNostrIdentity = async (
+  isCancelled?: () => boolean
+): Promise<NostrIdentity | null> => {
+  const existing = getCachedMultisigIdentity()
+  if (existing != null) return existing
+  return await new Promise(resolve => {
+    let settled = false
+    let unsub = (): void => {}
+    const timers: { id?: ReturnType<typeof setInterval> } = {}
+    const finish = (value: NostrIdentity | null): void => {
+      if (settled) return
+      settled = true
+      unsub()
+      if (timers.id != null) clearInterval(timers.id)
+      resolve(value)
+    }
+    unsub = watchIdentity(identity => {
+      if (identity != null) finish(identity)
+    })
+    timers.id = setInterval(() => {
+      if (isCancelled != null && !isCancelled()) finish(null)
+    }, 400)
+  })
+}
+
 export const getCachedMultisigSpends = (): MultisigSpendProposals =>
   cachedSpends
 

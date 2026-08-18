@@ -34,6 +34,11 @@ import {
 } from '../../util/arkade'
 import { getCurrencyCode } from '../../util/CurrencyInfoHelpers'
 import { getWalletName } from '../../util/CurrencyWalletHelpers'
+import {
+  getMultisigProposalByWalletId,
+  useMultisigProposals
+} from '../../util/multisig/store'
+import { useMultisigP2wshBalance } from '../../util/multisig/useMultisigP2wshBalance'
 import { zeroString } from '../../util/utils'
 import { EdgeButton } from '../buttons/EdgeButton'
 import { KavButtons } from '../buttons/KavButtons'
@@ -146,6 +151,25 @@ export const SwapCreateScene: React.FC<Props> = props => {
   )
   const fromWalletBalanceMap =
     fromWallet?.balanceMap ?? new Map<string, string>()
+
+  // Detect complete multisig from-wallet so we use the shared P2WSH balance
+  // instead of the shell bip49 balance (which is always 0).
+  const multisigProposals = useMultisigProposals()
+  const fromMultisigProposal = React.useMemo(
+    () =>
+      fromWalletId != null
+        ? multisigProposals.find(p => p.walletId === fromWalletId) ??
+          getMultisigProposalByWalletId(fromWalletId)
+        : undefined,
+    [fromWalletId, multisigProposals]
+  )
+  const isCompleteMultisig =
+    fromMultisigProposal != null && fromMultisigProposal.status === 'complete'
+  const p2wshBalance = useMultisigP2wshBalance(fromWalletId ?? '')
+  const effectiveFromBalance =
+    isCompleteMultisig && fromTokenId == null
+      ? p2wshBalance ?? '0'
+      : fromWalletBalanceMap.get(fromTokenId) ?? '0'
 
   const fromHeaderText =
     fromWallet == null ? lstrings.select_src_wallet : fromWalletName
@@ -270,7 +294,7 @@ export const SwapCreateScene: React.FC<Props> = props => {
     // specific amount. Therefore we always return false in this case.
     if (inputNativeAmountFor === 'to') return false
     // Get the balance:
-    const fromWalletBalance = fromWalletBalanceMap.get(fromTokenId) ?? '0'
+    const fromWalletBalance = effectiveFromBalance
     // If there is a balance and the amount is greater than the balance,
     // return true (which means amount exceeded balance).
     return (
@@ -569,7 +593,7 @@ export const SwapCreateScene: React.FC<Props> = props => {
 
   const renderAlert = (): React.ReactNode => {
     const { minimumPopupModals } = fromWalletSpecialCurrencyInfo
-    const primaryNativeBalance = fromWalletBalanceMap.get(fromTokenId) ?? '0'
+    const primaryNativeBalance = effectiveFromBalance
 
     if (
       minimumPopupModals != null &&

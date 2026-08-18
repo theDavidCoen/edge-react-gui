@@ -61,10 +61,6 @@ export const BalanceCard: React.FC<Props> = props => {
     state => state.ui.settings.isAccountBalanceVisible
   )
   const defaultIsoFiat = useSelector(state => state.ui.settings.defaultIsoFiat)
-  // Redux-driven baseline (rates / wallet map). P2WSH lives outside Redux.
-  useSelector(state =>
-    getTotalFiatAmountFromExchangeRates(state, defaultIsoFiat)
-  )
   const exchangeRates = useSelector(state => state.exchangeRates)
   const [, setP2wshTick] = React.useState(0)
   React.useEffect(() => {

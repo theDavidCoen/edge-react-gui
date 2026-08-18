@@ -5,6 +5,7 @@ import React, { useState } from 'react'
 import { SectionList, type ViewStyle } from 'react-native'
 import { sprintf } from 'sprintf-js'
 
+import { requestMultisigSwapSpend } from '../../actions/MultisigActions'
 import { updateSwapCount } from '../../actions/RequestReviewActions'
 import { useSwapRequestOptions } from '../../hooks/swap/useSwapRequestOptions'
 import { useHandler } from '../../hooks/useHandler'
@@ -26,6 +27,10 @@ import { restoreSwapQuotesForUi } from '../../util/arkade'
 import { getSwapPluginIconUri } from '../../util/CdnUris'
 import { CryptoAmount } from '../../util/CryptoAmount'
 import { logActivity } from '../../util/logger'
+import {
+  getMultisigProposalByWalletId,
+  loadMultisigStore
+} from '../../util/multisig/store'
 import { logEvent } from '../../util/tracking'
 import { convertNativeToExchange, DECIMAL_PRECISION } from '../../util/utils'
 import { AlertCardUi4 } from '../cards/AlertCard'
@@ -56,6 +61,17 @@ import { SafeSlider } from '../themed/SafeSlider'
 import { WalletListSectionHeader } from '../themed/WalletListSectionHeader'
 
 const PRICE_IMPACT_WARNING_THRESHOLD = 0.05
+
+/** Thrown by the makeSpend proxy to capture the deposit address without completing the spend. */
+class MultisigDepositAddressCaptured extends Error {
+  readonly depositAddress: string
+  readonly nativeAmount: string
+  constructor(depositAddress: string, nativeAmount: string) {
+    super('multisig-deposit-address-captured')
+    this.depositAddress = depositAddress
+    this.nativeAmount = nativeAmount
+  }
+}
 
 export interface SwapConfirmationParams {
   selectedQuote: EdgeSwapQuote
@@ -135,6 +151,16 @@ export const SwapConfirmationScene: React.FC<Props> = (props: Props) => {
 
   const { request } = selectedQuote
   const { quoteFor } = request
+
+  // Detect complete multisig from-wallet for warning banner and slide intercept.
+  const isSwapFromMultisig = React.useMemo(() => {
+    const fromWalletId = selectedQuote.request?.fromWallet?.id
+    const fromTokenId = selectedQuote.request?.fromTokenId
+    if (fromWalletId == null || fromTokenId !== null) return false
+    const proposal = getMultisigProposalByWalletId(fromWalletId)
+    return proposal?.status === 'complete'
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedQuote.request?.fromWallet?.id, account.id])
 
   const priceImpact = React.useMemo(() => {
     const { fromWallet, fromTokenId, toWallet, toTokenId } = request
@@ -296,6 +322,89 @@ export const SwapConfirmationScene: React.FC<Props> = (props: Props) => {
       // Both fromCurrencyCode and toCurrencyCode will exist, since we set them:
       const { toWallet, toTokenId, fromWallet, fromTokenId } = request
 
+      // Multisig P2WSH swap path: intercept the deposit address that the
+      // exchange plugin would pass to makeSpend, then route through the
+      // PSBT→Nostr cosigner flow with a 5-minute expiry.
+      await loadMultisigStore(account)
+      const multisigProposal = getMultisigProposalByWalletId(fromWallet.id)
+      const isCompleteMultisig =
+        multisigProposal != null && multisigProposal.status === 'complete'
+
+      if (isCompleteMultisig && fromTokenId == null) {
+        // Proxy makeSpend to capture the deposit address, then abort.
+        const originalMakeSpend = fromWallet.makeSpend.bind(fromWallet)
+        ;(fromWallet as any).makeSpend = async (spendInfo: any) => {
+          const target = spendInfo?.spendTargets?.[0]
+          if (target?.publicAddress != null) {
+            throw new MultisigDepositAddressCaptured(
+              target.publicAddress,
+              target.nativeAmount ?? fromNativeAmount
+            )
+          }
+          return await originalMakeSpend(spendInfo)
+        }
+
+        let depositAddress: string | undefined
+        let spendNativeAmount: string = fromNativeAmount
+        try {
+          await selectedQuote.approve()
+        } catch (err: unknown) {
+          if (err instanceof MultisigDepositAddressCaptured) {
+            depositAddress = err.depositAddress
+            spendNativeAmount = err.nativeAmount
+          } else {
+            throw err
+          }
+        } finally {
+          // Restore original makeSpend regardless of outcome
+          ;(fromWallet as any).makeSpend = originalMakeSpend
+        }
+
+        if (depositAddress == null) {
+          throw new Error('Could not capture exchange deposit address')
+        }
+
+        const privateKeyMaterial = await account.getDisplayPrivateKey(
+          fromWallet.id
+        )
+        dispatch(logEvent('Exchange_Shift_Start'))
+        const spend = await dispatch(
+          requestMultisigSwapSpend({
+            walletId: fromWallet.id,
+            destAddress: depositAddress,
+            amountNative: spendNativeAmount,
+            privateKeyMaterial
+          })
+        )
+
+        await selectedQuote.close()
+
+        if (spend.status === 'broadcast') {
+          navigation.push('swapSuccess', {
+            edgeTransaction: {
+              blockHeight: 0,
+              date: Date.now() / 1000,
+              nativeAmount: '-' + spend.amountNative,
+              networkFee: spend.feeNative,
+              ourReceiveAddresses: [],
+              signedTx: '',
+              txid: spend.txid ?? '',
+              isSend: true,
+              walletId: fromWallet.id,
+              currencyCode: fromWallet.currencyInfo.currencyCode,
+              tokenId: null,
+              metadata: {}
+            } as any,
+            walletId: fromWallet.id
+          })
+          onApprove()
+          await dispatch(updateSwapCount())
+        } else {
+          navigation.replace('multisigSpendPending', { spendId: spend.id })
+        }
+        return
+      }
+
       try {
         dispatch(logEvent('Exchange_Shift_Start'))
         const result: EdgeSwapResult = await selectedQuote.approve()
@@ -356,7 +465,7 @@ export const SwapConfirmationScene: React.FC<Props> = (props: Props) => {
           })
         )
       } catch (error: any) {
-        dispatch(logEvent('Exchange_Shift_Failed', { error: String(error) })) // TODO: Do we need to parse/clean all cases?
+        dispatch(logEvent('Exchange_Shift_Failed', { error: String(error) })) // TODO: Do we need to parse/clean all causes?
         setTimeout(() => {
           showError(error)
         }, 1)
@@ -525,6 +634,16 @@ export const SwapConfirmationScene: React.FC<Props> = (props: Props) => {
                 label: lstrings.learn_more,
                 onPress: handleCanBePartialExplanation
               }}
+            />
+          </EdgeAnim>
+        ) : null}
+
+        {isSwapFromMultisig ? (
+          <EdgeAnim enter={fadeInDown120}>
+            <AlertCardUi4
+              title={lstrings.multisig_swap_cosign_required_title}
+              body={lstrings.multisig_swap_cosign_required_body}
+              type="warning"
             />
           </EdgeAnim>
         ) : null}
