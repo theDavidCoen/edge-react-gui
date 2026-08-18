@@ -30,8 +30,8 @@ import { isEmail } from '../../util/utils'
 import { isZnsName, resolveZnsName } from '../../util/zns'
 import { EdgeAnim } from '../common/EdgeAnim'
 import { EdgeTouchableOpacity } from '../common/EdgeTouchableOpacity'
-import { AddressModal } from '../modals/AddressModal'
 import { showFullScreenSpinner } from '../modals/AirshipFullScreenSpinner'
+import { ChooseRecipientModal } from '../modals/ChooseRecipientModal'
 import { ConfirmContinueModal } from '../modals/ConfirmContinueModal'
 import { ScanModal } from '../modals/ScanModal'
 import {
@@ -425,8 +425,9 @@ export const AddressTile2 = React.forwardRef(
           : lstrings.scan_address_modal_title
 
       Airship.show<string | undefined>(bridge => (
-        <AddressModal
+        <ChooseRecipientModal
           bridge={bridge}
+          account={account}
           walletId={coreWallet.id}
           currencyCode={currencyCode}
           title={title}

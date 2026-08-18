@@ -80,7 +80,7 @@ export default [
   {
     files: [
       'src/assets/vector/index.ts',
-      'src/components/icons/ThemedIcons.tsx',
+
       'src/components/themed/VectorIcon.tsx'
     ],
     rules: {
@@ -374,8 +374,6 @@ export default [
 
       'src/components/themed/SearchFooter.tsx',
       'src/components/themed/SelectableRow.tsx',
-
-      'src/components/themed/ShareButtons.tsx',
 
       'src/components/themed/Slider.tsx',
 

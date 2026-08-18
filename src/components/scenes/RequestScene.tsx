@@ -60,8 +60,8 @@ import { EdgeTouchableOpacity } from '../common/EdgeTouchableOpacity'
 import { SceneWrapper } from '../common/SceneWrapper'
 import { withWallet } from '../hoc/withWallet'
 import { ChatBubblesIcon, ChevronRightIcon } from '../icons/ThemedIcons'
-import { AddressModal } from '../modals/AddressModal'
 import { ButtonsModal } from '../modals/ButtonsModal'
+import { ChooseRecipientModal } from '../modals/ChooseRecipientModal'
 import {
   WalletListModal,
   type WalletListResult
@@ -615,10 +615,7 @@ export class RequestSceneComponent extends React.Component<
           <ShareButtons
             openShareModal={this.openShareModal}
             copyToClipboard={this.copyToClipboard}
-            openFioAddressModal={this.openFioAddressModal}
-            account={this.props.account}
-            pluginId={this.props.wallet.currencyInfo.pluginId}
-            tokenId={this.props.route.params.tokenId}
+            openContactsModal={this.openContactsModal}
           />
         </EdgeAnim>
       </SceneWrapper>
@@ -716,10 +713,30 @@ export class RequestSceneComponent extends React.Component<
     })
   }
 
-  openFioAddressModal = async (): Promise<void> => {
-    const { navigation, wallet, currencyCode, route } = this.props
+  openContactsModal = async (): Promise<void> => {
+    const { account, navigation, wallet, currencyCode, route } = this.props
     const { walletId, tokenId } = route.params
-    if (wallet?.id == null || currencyCode == null) return
+    if (account == null || wallet?.id == null || currencyCode == null) return
+
+    const recipient = await Airship.show<string | undefined>(bridge => (
+      <ChooseRecipientModal
+        bridge={bridge}
+        account={account}
+        walletId={wallet.id}
+        currencyCode={currencyCode}
+        title={lstrings.choose_recipient_title}
+      />
+    ))
+    if (recipient == null || recipient === '') return
+
+    const fioPlugin = account.currencyConfig.fio
+    const isFio =
+      fioPlugin != null
+        ? await Promise.resolve(
+            fioPlugin.otherMethods.isFioAddressValid(recipient)
+          )
+        : false
+    if (isFio !== true) return
 
     if (!this.props.isConnected) {
       showError(lstrings.fio_network_alert_text, { trackError: false })
@@ -739,22 +756,12 @@ export class RequestSceneComponent extends React.Component<
       return
     }
 
-    const fioAddressTo = await Airship.show<string | undefined>(bridge => (
-      <AddressModal
-        bridge={bridge}
-        walletId={wallet.id}
-        currencyCode={currencyCode}
-        title={lstrings.fio_confirm_request_fio_title}
-      />
-    ))
-    if (fioAddressTo != null) {
-      navigation.navigate('fioRequestConfirmation', {
-        amounts: this.state.amounts,
-        fioAddressTo,
-        tokenId,
-        walletId
-      })
-    }
+    navigation.navigate('fioRequestConfirmation', {
+      amounts: this.state.amounts,
+      fioAddressTo: recipient,
+      tokenId,
+      walletId
+    })
   }
 }
 

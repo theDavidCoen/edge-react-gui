@@ -2171,19 +2171,24 @@ exports[`Request should render with loaded props 1`] = `
         }
       >
         <Text
+          adjustsFontSizeToFit={true}
           allowFontScaling={false}
           selectable={false}
           style={
             [
               {
-                "color": "#00f1a2",
-                "fontSize": 34,
+                "color": undefined,
+                "fontSize": 12,
               },
+              [
+                {
+                  "color": "#00f1a2",
+                  "fontSize": 34,
+                },
+                undefined,
+              ],
               {
-                "marginBottom": 11,
-              },
-              {
-                "fontFamily": "custom",
+                "fontFamily": "Ionicons",
                 "fontStyle": "normal",
                 "fontWeight": "normal",
               },
@@ -2191,7 +2196,7 @@ exports[`Request should render with loaded props 1`] = `
             ]
           }
         >
-          
+          
         </Text>
         <Text
           adjustsFontSizeToFit={true}
@@ -2208,13 +2213,14 @@ exports[`Request should render with loaded props 1`] = `
               },
               {
                 "fontSize": 17,
+                "marginTop": 11,
                 "textAlign": "center",
               },
               null,
             ]
           }
         >
-          FIO Request
+          Contacts
         </Text>
       </View>
       <View
@@ -2263,9 +2269,7 @@ exports[`Request should render with loaded props 1`] = `
                 "color": "#00f1a2",
                 "fontSize": 34,
               },
-              {
-                "marginBottom": 11,
-              },
+              undefined,
               {
                 "fontFamily": "custom",
                 "fontStyle": "normal",
@@ -2292,6 +2296,7 @@ exports[`Request should render with loaded props 1`] = `
               },
               {
                 "fontSize": 17,
+                "marginTop": 11,
                 "textAlign": "center",
               },
               null,
@@ -2347,9 +2352,7 @@ exports[`Request should render with loaded props 1`] = `
                 "color": "#00f1a2",
                 "fontSize": 34,
               },
-              {
-                "marginBottom": 11,
-              },
+              undefined,
               {
                 "fontFamily": "custom",
                 "fontStyle": "normal",
@@ -2376,6 +2379,7 @@ exports[`Request should render with loaded props 1`] = `
               },
               {
                 "fontSize": 17,
+                "marginTop": 11,
                 "textAlign": "center",
               },
               null,

@@ -118,6 +118,7 @@ import { ManageTokensScene as ManageTokensSceneComponent } from './scenes/Manage
 import { MigrateWalletCalculateFeeScene as MigrateWalletCalculateFeeSceneComponent } from './scenes/MigrateWalletCalculateFeeScene'
 import { MigrateWalletCompletionScene as MigrateWalletCompletionSceneComponent } from './scenes/MigrateWalletCompletionScene'
 import { MigrateWalletSelectCryptoScene as MigrateWalletSelectCryptoSceneComponent } from './scenes/MigrateWalletSelectCryptoScene'
+import { NostrAccountScene as NostrAccountSceneComponent } from './scenes/NostrAccountScene'
 import { NotificationCenterScene as NotificationCenterSceneComponent } from './scenes/NotificationCenterScene'
 import { NotificationScene as NotificationSceneComponent } from './scenes/NotificationScene'
 import { OtpRepairScene as OtpRepairSceneComponent } from './scenes/OtpRepairScene'
@@ -266,6 +267,7 @@ const MigrateWalletCompletionScene = ifLoggedIn(
 const MigrateWalletSelectCryptoScene = ifLoggedIn(
   MigrateWalletSelectCryptoSceneComponent
 )
+const NostrAccountScene = ifLoggedIn(NostrAccountSceneComponent)
 const NotificationCenterScene = ifLoggedIn(NotificationCenterSceneComponent)
 const NotificationScene = ifLoggedIn(NotificationSceneComponent)
 const OtpRepairScene = ifLoggedIn(OtpRepairSceneComponent)
@@ -958,6 +960,14 @@ const EdgeAppStack: React.FC = () => {
               fromParams={params => cleanBrandName(params.brand.brandName)}
             />
           )
+        }}
+      />
+      <AppStack.Screen
+        name="nostrAccount"
+        component={NostrAccountScene}
+        options={{
+          title: lstrings.nostr_account_title,
+          headerRight: () => null
         }}
       />
       <AppStack.Screen name="loanClose" component={LoanCloseScene} />

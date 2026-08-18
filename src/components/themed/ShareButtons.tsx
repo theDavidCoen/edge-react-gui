@@ -1,72 +1,50 @@
-import type { EdgeAccount } from 'edge-core-js'
 import * as React from 'react'
 import { View } from 'react-native'
 
 import { Fontello } from '../../assets/vector/index'
-import { validateFioAsset } from '../../constants/FioConstants'
 import { lstrings } from '../../locales/strings'
 import { EdgeTouchableOpacity } from '../common/EdgeTouchableOpacity'
+import { PeopleIcon } from '../icons/ThemedIcons'
 import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
-import { EdgeText } from '../themed/EdgeText'
+import { EdgeText } from './EdgeText'
 
 export interface Props {
   copyToClipboard: () => Promise<void>
-  openFioAddressModal: () => Promise<void>
+  openContactsModal: () => Promise<void>
   openShareModal: () => Promise<void>
-
-  // Optional props for FIO validation
-  account?: EdgeAccount
-  pluginId?: string
-  tokenId?: string | null
 }
 
-export function ShareButtons(props: Props) {
-  const {
-    copyToClipboard,
-    openShareModal,
-    openFioAddressModal,
-    account,
-    pluginId,
-    tokenId
-  } = props
+export function ShareButtons(props: Props): React.ReactElement {
+  const { copyToClipboard, openShareModal, openContactsModal } = props
   const theme = useTheme()
   const styles = getStyles(theme)
 
-  // Determine if FIO should be shown
-  const shouldShowFio = React.useMemo(() => {
-    // If no account info provided, show FIO by default (backwards compatibility)
-    if (account == null || pluginId == null) return true
-
-    // Check if FIO plugin exists
-    const fioPlugin = account.currencyConfig.fio
-    if (fioPlugin == null) return false
-
-    // If we have wallet/token info, validate the specific asset
-    const currencyConfig = account.currencyConfig[pluginId]
-    if (currencyConfig != null) {
-      const validation = validateFioAsset(currencyConfig, tokenId ?? null)
-      return validation.isValid
-    }
-
-    return true
-  }, [account, pluginId, tokenId])
-
   return (
     <View style={styles.container}>
-      {shouldShowFio && (
-        <ShareButton
-          icon="FIO-geometric"
-          text={lstrings.fio_reject_request_title}
-          onPress={openFioAddressModal}
-        />
-      )}
       <ShareButton
-        icon="Copy-icon"
+        icon={<PeopleIcon size={theme.rem(1.5)} color={theme.iconTappable} />}
+        text={lstrings.contacts_title}
+        onPress={openContactsModal}
+      />
+      <ShareButton
+        icon={
+          <Fontello
+            name="Copy-icon"
+            size={theme.rem(1.5)}
+            color={theme.iconTappable}
+          />
+        }
         text={lstrings.fragment_request_copy_title}
         onPress={copyToClipboard}
       />
       <ShareButton
-        icon="FIO-share"
+        icon={
+          <Fontello
+            name="FIO-share"
+            size={theme.rem(1.5)}
+            color={theme.iconTappable}
+          />
+        }
         text={lstrings.string_share}
         onPress={openShareModal}
       />
@@ -77,8 +55,8 @@ export function ShareButtons(props: Props) {
 function ShareButton(props: {
   text: string
   onPress: () => Promise<void>
-  icon: string
-}) {
+  icon: React.ReactNode
+}): React.ReactElement {
   const { icon, text, onPress } = props
   const theme = useTheme()
   const styles = getStyles(theme)
@@ -89,12 +67,7 @@ function ShareButton(props: {
       style={styles.button}
       onPress={onPress}
     >
-      <Fontello
-        name={icon}
-        size={theme.rem(1.5)}
-        style={styles.image}
-        color={theme.iconTappable}
-      />
+      {icon}
       <EdgeText style={styles.text}>{text}</EdgeText>
     </EdgeTouchableOpacity>
   )
@@ -113,11 +86,9 @@ const getStyles = cacheStyles((theme: Theme) => ({
     alignItems: 'center',
     justifyContent: 'center'
   },
-  image: {
-    marginBottom: theme.rem(0.5)
-  },
   text: {
     textAlign: 'center',
-    fontSize: theme.rem(0.75)
+    fontSize: theme.rem(0.75),
+    marginTop: theme.rem(0.5)
   }
 }))

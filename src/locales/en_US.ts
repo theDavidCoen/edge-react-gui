@@ -1426,6 +1426,68 @@ const strings = {
     '1. Public address to send money to\n2. Private key to sweep\n3. Wallet Connect URI to connect to a dApp\n4. Edge Login URI to login to another device\n\nEdge will auto-detect the URI format and allow you to select an appropriate wallet',
   enter_any_input_hint: 'Enter any of the above',
   address_modal_default_header: 'Enter Address',
+
+  // Private Edge contacts
+  contacts_title: 'Contacts',
+  choose_recipient_title: 'Choose Recipient',
+  choose_recipient_search_placeholder: 'Name, address, npub or NIP-05',
+  choose_recipient_tab_contacts: 'Contacts',
+  choose_recipient_tab_manual: 'Enter manually',
+  choose_recipient_edge_contacts: 'Edge contacts',
+  choose_recipient_add_contact: 'Add contact',
+  choose_recipient_empty: 'No Edge contacts yet',
+  choose_recipient_no_match_s: 'This contact has no %1$s address',
+  edge_contact_new_title: 'New Edge Contact',
+  edge_contact_name: 'Name',
+  edge_contact_identifier_s: 'Identifier %1$s',
+  edge_contact_type: 'Type',
+  edge_contact_type_address: 'Crypto address',
+  edge_contact_type_npub: 'Nostr npub',
+  edge_contact_type_nip05: 'NIP-05',
+  edge_contact_type_fio: 'FIO handle',
+  edge_contact_value_placeholder: 'Address, npub or NIP-05',
+  edge_contact_add_identifier: 'Add another address',
+  edge_contact_privacy:
+    'Saved privately in your encrypted Edge account and never shared.',
+  edge_contact_saved_title: 'Contact Saved',
+  edge_contact_use_recipient: 'Use this recipient',
+  edge_contact_saved_footer: 'Saved privately in Edge',
+  edge_contact_primary: 'Primary',
+  edge_contact_name_required: 'Enter a name',
+  edge_contact_identifier_required: 'Add at least one address',
+  edge_contact_invalid_npub: 'Invalid npub',
+  edge_contact_invalid_nip05: 'Invalid NIP-05',
+
+  // Nostr account
+  nostr_account_title: 'Nostr Account',
+  nostr_account_npub: 'Your Nostr npub',
+  nostr_account_npub_body:
+    'Your Nostr public key (npub) is stored in your encrypted Edge account.',
+  nostr_account_npub_copied: 'Nostr npub copied',
+  nostr_account_display_name: 'Display name',
+  nostr_account_display_name_none: 'Not set',
+  nostr_account_set_display_name: 'Set display name',
+  nostr_account_edit_display_name: 'Edit display name',
+  nostr_account_set_display_name_title: 'Nostr display name',
+  nostr_account_set_display_name_body:
+    'Choose a display name others will see on Nostr. You can use your Edge username or something else.',
+  nostr_account_display_name_saved: 'Display name published to Nostr',
+  nostr_account_nip05: 'Username (NIP-05)',
+  nostr_account_nip05_none: 'Not set',
+  nostr_account_import_button: 'Import Nostr Account',
+  nostr_account_import_title: 'Import Nostr Account',
+  nostr_account_import_body:
+    'Already use Nostr? Paste your nsec to replace the Edge-generated key.',
+  nostr_account_import_warning:
+    'Importing replaces your current Nostr account in Edge.',
+  nostr_account_import_nsec_label: 'nsec',
+  nostr_account_import_invalid: 'Invalid nsec',
+  nostr_account_import_success: 'Nostr account imported',
+  nostr_account_private_key_button: 'Nostr Private Key',
+  nostr_account_private_key_title: 'Nostr Private Key',
+  nostr_account_private_key_warning:
+    'Do not share your Nostr private key. Anyone with this key can impersonate you on Nostr.',
+
   open_url_err: 'Can not open this url - %s',
   // Unstoppable resolution error codes
   resolving: 'Resolving...',
