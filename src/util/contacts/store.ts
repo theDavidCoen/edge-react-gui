@@ -15,6 +15,7 @@ import {
   type EdgeContact,
   edgeContactItemId,
   type EdgeContacts,
+  isActiveEdgeContact,
   isEdgeContactItemId
 } from './types'
 
@@ -58,7 +59,7 @@ export const mergeEdgeContacts = (
       map.set(contact.id, contact)
     }
   }
-  return sortContacts([...map.values()])
+  return sortContacts([...map.values()].filter(isActiveEdgeContact))
 }
 
 const sameContactSet = (a: EdgeContacts, b: EdgeContacts): boolean => {
@@ -93,20 +94,11 @@ const writeContactItem = async (
   }
 }
 
-const deleteContactItem = async (
-  account: EdgeAccount,
-  contactId: string
-): Promise<boolean> => {
-  if (!isAccountDataStoreActive(account)) return false
+const pushAccountSync = async (account: EdgeAccount): Promise<void> => {
   try {
-    await account.dataStore.deleteItem(
-      EDGE_CONTACTS_STORE_ID,
-      edgeContactItemId(contactId)
-    )
-    return true
-  } catch (error) {
-    if (isClosedDataStoreError(error)) return false
-    throw error
+    await account.sync()
+  } catch {
+    // Offline or account closing — tombstone will sync on next cycle.
   }
 }
 
@@ -141,7 +133,7 @@ const readContactsFromStore = async (
         itemId
       )
       const parsed = asMaybe(asEdgeContact)(JSON.parse(text))
-      if (parsed != null) perContact.push(parsed)
+      if (parsed != null && isActiveEdgeContact(parsed)) perContact.push(parsed)
     } catch {
       // Skip malformed items.
     }
@@ -163,7 +155,9 @@ const readContactsFromStore = async (
       EDGE_CONTACTS_STORE_ID,
       EDGE_CONTACTS_LEGACY_KEY
     )
-    legacy = asMaybe(asEdgeContacts)(JSON.parse(text)) ?? []
+    legacy = (asMaybe(asEdgeContacts)(JSON.parse(text)) ?? []).filter(
+      isActiveEdgeContact
+    )
     if (legacy.length > 0) hadLegacyKey = true
   } catch {
     // No legacy blob.
@@ -289,7 +283,7 @@ export const saveEdgeContact = async (
 ): Promise<EdgeContact> => {
   await loadEdgeContacts(account)
   const now = Date.now()
-  const next: EdgeContact = { ...contact, updatedAt: now }
+  const next: EdgeContact = { ...contact, updatedAt: now, deletedAt: undefined }
   const existingIndex = cachedContacts.findIndex(item => item.id === next.id)
   const contacts =
     existingIndex >= 0
@@ -308,6 +302,12 @@ export const deleteEdgeContact = async (
   contactId: string
 ): Promise<void> => {
   await loadEdgeContacts(account)
+  const existing = cachedContacts.find(item => item.id === contactId)
+  if (existing == null) return
+
+  const now = Date.now()
+  const tombstone: EdgeContact = { ...existing, updatedAt: now, deletedAt: now }
   emitIfChanged(cachedContacts.filter(item => item.id !== contactId))
-  await deleteContactItem(account, contactId)
+  await writeContactItem(account, tombstone)
+  await pushAccountSync(account)
 }

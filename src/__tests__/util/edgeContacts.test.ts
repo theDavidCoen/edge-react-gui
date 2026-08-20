@@ -31,6 +31,7 @@ const makeAccount = (): EdgeAccount & {
     id: 'account-1',
     loggedIn: true,
     _stores: stores,
+    sync: async () => {},
     dataStore: {
       getItem: async (storeId: string, itemId: string) => {
         const value = stores.get(storeId)?.get(itemId)
@@ -73,7 +74,8 @@ const contact = (
     }
   ],
   createdAt: partial.createdAt ?? 1,
-  updatedAt: partial.updatedAt ?? 1
+  updatedAt: partial.updatedAt ?? 1,
+  deletedAt: partial.deletedAt
 })
 
 describe('detectIdentifierType', () => {
@@ -136,6 +138,17 @@ describe('mergeEdgeContacts', () => {
     expect(mergeEdgeContacts([older, other], [newer]).map(c => c.name)).toEqual(
       ['Bob', 'New']
     )
+  })
+
+  it('drops contacts when a newer tombstone wins', () => {
+    const live = contact({ id: 'a', name: 'Live', updatedAt: 1 })
+    const tombstone = contact({
+      id: 'a',
+      name: 'Live',
+      updatedAt: 5,
+      deletedAt: 5
+    })
+    expect(mergeEdgeContacts([live], [tombstone])).toEqual([])
   })
 })
 
@@ -213,10 +226,13 @@ describe('edge contacts store', () => {
       contact({ id: 'gone', name: 'Gone', updatedAt: 2 })
     )
 
-    // Another device deleted "gone" and added "remote":
-    await account.dataStore.deleteItem(
+    // Another device tombstoned "gone" and added "remote":
+    await account.dataStore.setItem(
       EDGE_CONTACTS_STORE_ID,
-      edgeContactItemId('gone')
+      edgeContactItemId('gone'),
+      JSON.stringify(
+        contact({ id: 'gone', name: 'Gone', updatedAt: 99, deletedAt: 99 })
+      )
     )
     await account.dataStore.setItem(
       EDGE_CONTACTS_STORE_ID,
@@ -232,15 +248,26 @@ describe('edge contacts store', () => {
     ).toEqual(['Keep', 'Remote'])
   })
 
-  it('deletes a contact item from the store', async () => {
+  it('writes a syncable tombstone instead of hard-deleting', async () => {
     const account = makeAccount()
     await saveEdgeContact(account, contact({ id: 'gone', name: 'Gone' }))
     await deleteEdgeContact(account, 'gone')
     expect(getCachedEdgeContacts()).toEqual([])
-    expect(
-      account._stores
-        .get(EDGE_CONTACTS_STORE_ID)
-        ?.has(edgeContactItemId('gone'))
-    ).toBe(false)
+    const raw = account._stores
+      .get(EDGE_CONTACTS_STORE_ID)
+      ?.get(edgeContactItemId('gone'))
+    expect(raw).toBeDefined()
+    const parsed = JSON.parse(raw ?? '')
+    expect(parsed.deletedAt).toBeGreaterThan(0)
+  })
+
+  it('hides tombstoned contacts after reload', async () => {
+    const account = makeAccount()
+    await saveEdgeContact(account, contact({ id: 'gone', name: 'Gone' }))
+    await deleteEdgeContact(account, 'gone')
+
+    resetEdgeContactsStore()
+    await reloadEdgeContacts(account)
+    expect(getCachedEdgeContacts()).toEqual([])
   })
 })

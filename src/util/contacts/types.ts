@@ -53,7 +53,8 @@ export const asEdgeContact = asObject({
   name: asString,
   identifiers: asArray(asEdgeContactIdentifier),
   createdAt: asNumber,
-  updatedAt: asNumber
+  updatedAt: asNumber,
+  deletedAt: asOptional(asNumber)
 })
 export interface EdgeContact {
   id: string
@@ -61,7 +62,12 @@ export interface EdgeContact {
   identifiers: EdgeContactIdentifier[]
   createdAt: number
   updatedAt: number
+  /** Set when soft-deleted; synced via setItem (deleteItem does not sync). */
+  deletedAt?: number
 }
+
+export const isActiveEdgeContact = (contact: EdgeContact): boolean =>
+  contact.deletedAt == null
 
 export const asEdgeContacts = asArray(asEdgeContact)
 export type EdgeContacts = EdgeContact[]
