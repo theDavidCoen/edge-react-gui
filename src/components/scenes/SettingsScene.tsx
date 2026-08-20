@@ -625,6 +625,7 @@ export const SettingsScene: React.FC<Props> = props => {
                 onPress={handleSpendingLimits}
               />
               <SettingsTappableRow
+                disabled={isLocked}
                 label={lstrings.edge_contacts_settings_title}
                 onPress={handleEdgeContacts}
               />
