@@ -9,7 +9,17 @@ import {
 } from 'cleaners'
 
 export const EDGE_CONTACTS_STORE_ID = 'edgeContacts'
-export const EDGE_CONTACTS_KEY = 'contacts'
+
+/** Legacy single-blob key used before per-contact items. */
+export const EDGE_CONTACTS_LEGACY_KEY = 'contacts'
+
+export const EDGE_CONTACT_ITEM_PREFIX = 'contact:'
+
+export const edgeContactItemId = (contactId: string): string =>
+  `${EDGE_CONTACT_ITEM_PREFIX}${contactId}`
+
+export const isEdgeContactItemId = (itemId: string): boolean =>
+  itemId.startsWith(EDGE_CONTACT_ITEM_PREFIX)
 
 export const asEdgeContactIdentifierType = asValue(
   'address',

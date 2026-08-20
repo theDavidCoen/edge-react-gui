@@ -33,6 +33,7 @@ import { ActionQueueService } from './ActionQueueService'
 import { Airship, showDevError } from './AirshipInstance'
 import { AutoLogout } from './AutoLogout'
 import { ContactsLoader } from './ContactsLoader'
+import { EdgeContactsService } from './EdgeContactsService'
 import { EdgeContextCallbackManager } from './EdgeContextCallbackManager'
 import { FioService } from './FioService'
 import { LoanManagerService } from './LoanManagerService'
@@ -165,6 +166,7 @@ export const Services: React.FC<Props> = props => {
       {account == null ? null : (
         <AccountCallbackManager account={account} navigation={navigation} />
       )}
+      {account == null ? null : <EdgeContactsService account={account} />}
       {account == null ? null : <SortedWalletList account={account} />}
       <EdgeContextCallbackManager navigation={navigation} />
       {account == null ? null : (

@@ -7,19 +7,30 @@ import {
   pickContactSendUri
 } from '../../util/contacts/match'
 import {
+  deleteEdgeContact,
   getCachedEdgeContacts,
   loadEdgeContacts,
+  mergeEdgeContacts,
+  reloadEdgeContacts,
   resetEdgeContactsStore,
   saveEdgeContact
 } from '../../util/contacts/store'
-import type { EdgeContact } from '../../util/contacts/types'
+import {
+  EDGE_CONTACTS_LEGACY_KEY,
+  EDGE_CONTACTS_STORE_ID,
+  type EdgeContact,
+  edgeContactItemId
+} from '../../util/contacts/types'
 import { encodeNpub, hexToBytes } from '../../util/nostr/bech32Keys'
 
-const makeAccount = (): EdgeAccount => {
+const makeAccount = (): EdgeAccount & {
+  _stores: Map<string, Map<string, string>>
+} => {
   const stores = new Map<string, Map<string, string>>()
   return {
     id: 'account-1',
     loggedIn: true,
+    _stores: stores,
     dataStore: {
       getItem: async (storeId: string, itemId: string) => {
         const value = stores.get(storeId)?.get(itemId)
@@ -33,9 +44,18 @@ const makeAccount = (): EdgeAccount => {
           stores.set(storeId, store)
         }
         store.set(itemId, value)
+      },
+      deleteItem: async (storeId: string, itemId: string) => {
+        stores.get(storeId)?.delete(itemId)
+      },
+      listItemIds: async (storeId: string) => {
+        const store = stores.get(storeId)
+        return store == null ? [] : [...store.keys()]
       }
     }
-  } as unknown as EdgeAccount
+  } as unknown as EdgeAccount & {
+    _stores: Map<string, Map<string, string>>
+  }
 }
 
 const contact = (
@@ -52,8 +72,8 @@ const contact = (
       primary: true
     }
   ],
-  createdAt: 1,
-  updatedAt: 1
+  createdAt: partial.createdAt ?? 1,
+  updatedAt: partial.updatedAt ?? 1
 })
 
 describe('detectIdentifierType', () => {
@@ -108,12 +128,23 @@ describe('pickContactSendUri', () => {
   })
 })
 
+describe('mergeEdgeContacts', () => {
+  it('keeps the newer updatedAt when ids collide', () => {
+    const older = contact({ id: 'a', name: 'Old', updatedAt: 1 })
+    const newer = contact({ id: 'a', name: 'New', updatedAt: 2 })
+    const other = contact({ id: 'b', name: 'Bob', updatedAt: 1 })
+    expect(mergeEdgeContacts([older, other], [newer]).map(c => c.name)).toEqual(
+      ['Bob', 'New']
+    )
+  })
+})
+
 describe('edge contacts store', () => {
   beforeEach(() => {
     resetEdgeContactsStore()
   })
 
-  it('saves and reloads contacts from the encrypted account store', async () => {
+  it('saves contacts as per-id items and reloads them', async () => {
     const account = makeAccount()
     const saved = await saveEdgeContact(
       account,
@@ -121,8 +152,72 @@ describe('edge contacts store', () => {
     )
     expect(saved.name).toBe('Alice')
 
+    const store = account._stores.get(EDGE_CONTACTS_STORE_ID)
+    expect(store?.has(edgeContactItemId('alice-1'))).toBe(true)
+    expect(store?.has(EDGE_CONTACTS_LEGACY_KEY)).toBe(false)
+
     resetEdgeContactsStore()
     await loadEdgeContacts(account)
     expect(getCachedEdgeContacts().map(item => item.name)).toEqual(['Alice'])
+  })
+
+  it('migrates the legacy contacts blob to per-id items', async () => {
+    const account = makeAccount()
+    await account.dataStore.setItem(
+      EDGE_CONTACTS_STORE_ID,
+      EDGE_CONTACTS_LEGACY_KEY,
+      JSON.stringify([
+        contact({ id: 'legacy-1', name: 'Legacy', updatedAt: 5 })
+      ])
+    )
+
+    await loadEdgeContacts(account, { force: true })
+    expect(getCachedEdgeContacts().map(item => item.name)).toEqual(['Legacy'])
+
+    const store = account._stores.get(EDGE_CONTACTS_STORE_ID)
+    expect(store?.has(edgeContactItemId('legacy-1'))).toBe(true)
+    expect(store?.has(EDGE_CONTACTS_LEGACY_KEY)).toBe(false)
+  })
+
+  it('force reload replaces cache with disk (cross-device deletes stick)', async () => {
+    const account = makeAccount()
+    await saveEdgeContact(
+      account,
+      contact({ id: 'keep', name: 'Keep', updatedAt: 2 })
+    )
+    await saveEdgeContact(
+      account,
+      contact({ id: 'gone', name: 'Gone', updatedAt: 2 })
+    )
+
+    // Another device deleted "gone" and added "remote":
+    await account.dataStore.deleteItem(
+      EDGE_CONTACTS_STORE_ID,
+      edgeContactItemId('gone')
+    )
+    await account.dataStore.setItem(
+      EDGE_CONTACTS_STORE_ID,
+      edgeContactItemId('remote'),
+      JSON.stringify(contact({ id: 'remote', name: 'Remote', updatedAt: 3 }))
+    )
+
+    await reloadEdgeContacts(account)
+    expect(
+      getCachedEdgeContacts()
+        .map(item => item.name)
+        .sort()
+    ).toEqual(['Keep', 'Remote'])
+  })
+
+  it('deletes a contact item from the store', async () => {
+    const account = makeAccount()
+    await saveEdgeContact(account, contact({ id: 'gone', name: 'Gone' }))
+    await deleteEdgeContact(account, 'gone')
+    expect(getCachedEdgeContacts()).toEqual([])
+    expect(
+      account._stores
+        .get(EDGE_CONTACTS_STORE_ID)
+        ?.has(edgeContactItemId('gone'))
+    ).toBe(false)
   })
 })
