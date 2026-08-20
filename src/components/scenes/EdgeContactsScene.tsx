@@ -1,5 +1,7 @@
 import * as React from 'react'
 import { FlatList, View } from 'react-native'
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller'
+import Animated, { useAnimatedStyle } from 'react-native-reanimated'
 
 import { SCROLL_INDICATOR_INSET_FIX } from '../../constants/constantSettings'
 import { useAsyncEffect } from '../../hooks/useAsyncEffect'
@@ -30,6 +32,37 @@ import { SearchFooter } from '../themed/SearchFooter'
 import { SelectableRow } from '../themed/SelectableRow'
 
 interface Props extends EdgeAppSceneProps<'edgeContacts'> {}
+
+/**
+ * Privacy notice for the Contacts dock. SceneWrapper lifts the dock with the
+ * keyboard; we translate it back down so it stays under the keyboard instead
+ * of overlapping Search.
+ */
+const ContactsPrivacyDock: React.FC = () => {
+  const theme = useTheme()
+  const styles = getStyles(theme)
+  const { height: keyboardHeightDiff } = useReanimatedKeyboardAnimation()
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const keyboardHeight =
+      keyboardHeightDiff.value < 0 ? -keyboardHeightDiff.value : 0
+    return { transform: [{ translateY: keyboardHeight }] }
+  })
+
+  return (
+    <Animated.View pointerEvents="none" style={animatedStyle}>
+      <View style={styles.privacyBox}>
+        <ShieldCheckmarkIcon
+          size={theme.rem(1.25)}
+          color={theme.iconTappable}
+        />
+        <View style={styles.privacyText}>
+          <SmallText>{lstrings.edge_contact_privacy}</SmallText>
+        </View>
+      </View>
+    </Animated.View>
+  )
+}
 
 export const EdgeContactsScene: React.FC<Props> = () => {
   const account = useSelector(state => state.core.account)
@@ -146,24 +179,10 @@ export const EdgeContactsScene: React.FC<Props> = () => {
       avoidKeyboard
       footerHeight={footerHeight}
       renderFooter={renderFooter}
-      dockProps={
-        isSearching
-          ? undefined
-          : {
-              keyboardVisibleOnly: false,
-              children: (
-                <View style={styles.privacyBox}>
-                  <ShieldCheckmarkIcon
-                    size={theme.rem(1.25)}
-                    color={theme.iconTappable}
-                  />
-                  <View style={styles.privacyText}>
-                    <SmallText>{lstrings.edge_contact_privacy}</SmallText>
-                  </View>
-                </View>
-              )
-            }
-      }
+      dockProps={{
+        keyboardVisibleOnly: false,
+        children: <ContactsPrivacyDock />
+      }}
     >
       {({ insetStyle, undoInsetStyle }) => (
         <View style={[styles.listStack, undoInsetStyle]}>
