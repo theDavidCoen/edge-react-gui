@@ -146,20 +146,24 @@ export const EdgeContactsScene: React.FC<Props> = () => {
       avoidKeyboard
       footerHeight={footerHeight}
       renderFooter={renderFooter}
-      dockProps={{
-        keyboardVisibleOnly: false,
-        children: (
-          <View style={styles.privacyBox}>
-            <ShieldCheckmarkIcon
-              size={theme.rem(1.25)}
-              color={theme.iconTappable}
-            />
-            <View style={styles.privacyText}>
-              <SmallText>{lstrings.edge_contact_privacy}</SmallText>
-            </View>
-          </View>
-        )
-      }}
+      dockProps={
+        isSearching
+          ? undefined
+          : {
+              keyboardVisibleOnly: false,
+              children: (
+                <View style={styles.privacyBox}>
+                  <ShieldCheckmarkIcon
+                    size={theme.rem(1.25)}
+                    color={theme.iconTappable}
+                  />
+                  <View style={styles.privacyText}>
+                    <SmallText>{lstrings.edge_contact_privacy}</SmallText>
+                  </View>
+                </View>
+              )
+            }
+      }
     >
       {({ insetStyle, undoInsetStyle }) => (
         <View style={[styles.listStack, undoInsetStyle]}>
