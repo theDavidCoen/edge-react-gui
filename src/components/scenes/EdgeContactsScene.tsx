@@ -1,14 +1,11 @@
 import * as React from 'react'
-import { FlatList, Keyboard, View } from 'react-native'
+import { FlatList, View } from 'react-native'
 
 import { SCROLL_INDICATOR_INSET_FIX } from '../../constants/constantSettings'
 import { useAsyncEffect } from '../../hooks/useAsyncEffect'
 import { useHandler } from '../../hooks/useHandler'
 import { lstrings } from '../../locales/strings'
-import {
-  type FooterRender,
-  useSceneFooterState
-} from '../../state/SceneFooterState'
+import type { FooterRender } from '../../state/SceneFooterState'
 import { useSelector } from '../../types/reactRedux'
 import type { EdgeAppSceneProps } from '../../types/routerTypes'
 import {
@@ -23,18 +20,14 @@ import type { EdgeContact } from '../../util/contacts/types'
 import { truncateString } from '../../util/utils'
 import { EdgeButton } from '../buttons/EdgeButton'
 import { SceneWrapper } from '../common/SceneWrapper'
-import { SearchIconAnimated, ShieldCheckmarkIcon } from '../icons/ThemedIcons'
+import { ShieldCheckmarkIcon } from '../icons/ThemedIcons'
 import { Space } from '../layout/Space'
 import { EditEdgeContactModal } from '../modals/EditEdgeContactModal'
 import { Airship } from '../services/AirshipInstance'
 import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
 import { EdgeText, SmallText } from '../themed/EdgeText'
-import { SceneFooterWrapper } from '../themed/SceneFooterWrapper'
+import { SearchFooter } from '../themed/SearchFooter'
 import { SelectableRow } from '../themed/SelectableRow'
-import {
-  SimpleTextInput,
-  type SimpleTextInputRef
-} from '../themed/SimpleTextInput'
 
 interface Props extends EdgeAppSceneProps<'edgeContacts'> {}
 
@@ -48,10 +41,6 @@ export const EdgeContactsScene: React.FC<Props> = () => {
   const [isSearching, setIsSearching] = React.useState(false)
   const [footerHeight, setFooterHeight] = React.useState<number | undefined>()
 
-  const textInputRef = React.useRef<SimpleTextInputRef>(null)
-  const footerOpenRatio = useSceneFooterState(state => state.footerOpenRatio)
-  const setKeepOpen = useSceneFooterState(state => state.setKeepOpen)
-
   useAsyncEffect(
     async () => {
       await syncAndReloadEdgeContacts(account)
@@ -59,16 +48,6 @@ export const EdgeContactsScene: React.FC<Props> = () => {
     [account],
     'EdgeContactsScene'
   )
-
-  React.useEffect(() => {
-    if (setKeepOpen != null) setKeepOpen(isSearching)
-    if (isSearching && textInputRef.current != null) {
-      textInputRef.current.focus()
-    }
-    if (!isSearching && textInputRef.current != null) {
-      textInputRef.current.blur()
-    }
-  }, [isSearching, setKeepOpen])
 
   const filteredContacts = React.useMemo(
     () => contacts.filter(contact => contactMatchesSearch(contact, searchText)),
@@ -90,10 +69,6 @@ export const EdgeContactsScene: React.FC<Props> = () => {
 
   const handleFooterLayoutHeight = useHandler((height: number) => {
     setFooterHeight(height)
-  })
-
-  const handleSubmitEditing = useHandler(() => {
-    Keyboard.dismiss()
   })
 
   const handleAddContact = useHandler(async () => {
@@ -143,11 +118,37 @@ export const EdgeContactsScene: React.FC<Props> = () => {
   const renderFooter: FooterRender = React.useCallback(
     sceneWrapperInfo => {
       return (
-        <SceneFooterWrapper
-          key="EdgeContactsScene-SearchFooter"
+        <SearchFooter
+          name="EdgeContactsScene-SearchFooter"
+          placeholder={lstrings.edge_contacts_search}
+          isSearching={isSearching}
+          searchText={searchText}
           sceneWrapperInfo={sceneWrapperInfo}
+          onFocus={handleStartSearching}
+          onCancel={handleDoneSearching}
+          onChangeText={handleChangeText}
           onLayoutHeight={handleFooterLayoutHeight}
-        >
+        />
+      )
+    },
+    [
+      handleChangeText,
+      handleDoneSearching,
+      handleFooterLayoutHeight,
+      handleStartSearching,
+      isSearching,
+      searchText
+    ]
+  )
+
+  return (
+    <SceneWrapper
+      avoidKeyboard
+      footerHeight={footerHeight}
+      renderFooter={renderFooter}
+      dockProps={{
+        keyboardVisibleOnly: false,
+        children: (
           <View style={styles.privacyBox}>
             <ShieldCheckmarkIcon
               size={theme.rem(1.25)}
@@ -157,53 +158,16 @@ export const EdgeContactsScene: React.FC<Props> = () => {
               <SmallText>{lstrings.edge_contact_privacy}</SmallText>
             </View>
           </View>
-          <SimpleTextInput
-            returnKeyType="search"
-            placeholder={lstrings.edge_contacts_search}
-            onChangeText={handleChangeText}
-            value={searchText}
-            active={isSearching}
-            onCancel={handleDoneSearching}
-            onFocus={handleStartSearching}
-            onSubmitEditing={handleSubmitEditing}
-            ref={textInputRef}
-            iconComponent={SearchIconAnimated}
-            scale={footerHeight == null ? undefined : footerOpenRatio}
-            horizontalRem={1}
-            verticalRem={0.5}
-            autoCorrect={false}
-          />
-        </SceneFooterWrapper>
-      )
-    },
-    [
-      footerHeight,
-      footerOpenRatio,
-      handleChangeText,
-      handleDoneSearching,
-      handleFooterLayoutHeight,
-      handleStartSearching,
-      handleSubmitEditing,
-      isSearching,
-      searchText,
-      styles.privacyBox,
-      styles.privacyText,
-      theme
-    ]
-  )
-
-  return (
-    <SceneWrapper
-      avoidKeyboard
-      footerHeight={footerHeight}
-      renderFooter={renderFooter}
+        )
+      }}
     >
       {({ insetStyle, undoInsetStyle }) => (
         <View style={[styles.listStack, undoInsetStyle]}>
           <FlatList
             contentContainerStyle={{
               ...insetStyle,
-              ...styles.listContent,
+              flexGrow: 1,
+              paddingTop: (insetStyle.paddingTop ?? 0) + theme.rem(0.5),
               paddingBottom: (insetStyle.paddingBottom ?? 0) + theme.rem(1)
             }}
             data={filteredContacts}
@@ -239,10 +203,6 @@ const getStyles = cacheStyles((theme: Theme) => ({
   listStack: {
     flexGrow: 1
   },
-  listContent: {
-    flexGrow: 1,
-    paddingTop: theme.rem(0.5)
-  },
   avatar: {
     alignItems: 'center',
     backgroundColor: theme.iconTappable,
@@ -262,7 +222,7 @@ const getStyles = cacheStyles((theme: Theme) => ({
     backgroundColor: theme.cardBaseColor,
     borderRadius: theme.rem(0.5),
     marginHorizontal: theme.rem(1),
-    marginTop: theme.rem(0.5),
+    marginBottom: theme.rem(0.5),
     padding: theme.rem(0.75)
   },
   privacyText: {
