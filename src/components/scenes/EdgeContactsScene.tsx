@@ -1,13 +1,20 @@
 import * as React from 'react'
-import { FlatList, View } from 'react-native'
+import { FlatList, Keyboard, View } from 'react-native'
 
 import { SCROLL_INDICATOR_INSET_FIX } from '../../constants/constantSettings'
 import { useAsyncEffect } from '../../hooks/useAsyncEffect'
 import { useHandler } from '../../hooks/useHandler'
 import { lstrings } from '../../locales/strings'
+import {
+  type FooterRender,
+  useSceneFooterState
+} from '../../state/SceneFooterState'
 import { useSelector } from '../../types/reactRedux'
 import type { EdgeAppSceneProps } from '../../types/routerTypes'
-import { primaryIdentifier } from '../../util/contacts/match'
+import {
+  contactMatchesSearch,
+  primaryIdentifier
+} from '../../util/contacts/match'
 import {
   syncAndReloadEdgeContacts,
   useEdgeContacts
@@ -16,12 +23,18 @@ import type { EdgeContact } from '../../util/contacts/types'
 import { truncateString } from '../../util/utils'
 import { EdgeButton } from '../buttons/EdgeButton'
 import { SceneWrapper } from '../common/SceneWrapper'
+import { SearchIconAnimated, ShieldCheckmarkIcon } from '../icons/ThemedIcons'
 import { Space } from '../layout/Space'
 import { EditEdgeContactModal } from '../modals/EditEdgeContactModal'
 import { Airship } from '../services/AirshipInstance'
 import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
-import { EdgeText } from '../themed/EdgeText'
+import { EdgeText, SmallText } from '../themed/EdgeText'
+import { SceneFooterWrapper } from '../themed/SceneFooterWrapper'
 import { SelectableRow } from '../themed/SelectableRow'
+import {
+  SimpleTextInput,
+  type SimpleTextInputRef
+} from '../themed/SimpleTextInput'
 
 interface Props extends EdgeAppSceneProps<'edgeContacts'> {}
 
@@ -31,6 +44,14 @@ export const EdgeContactsScene: React.FC<Props> = () => {
   const styles = getStyles(theme)
   const contacts = useEdgeContacts()
 
+  const [searchText, setSearchText] = React.useState('')
+  const [isSearching, setIsSearching] = React.useState(false)
+  const [footerHeight, setFooterHeight] = React.useState<number | undefined>()
+
+  const textInputRef = React.useRef<SimpleTextInputRef>(null)
+  const footerOpenRatio = useSceneFooterState(state => state.footerOpenRatio)
+  const setKeepOpen = useSceneFooterState(state => state.setKeepOpen)
+
   useAsyncEffect(
     async () => {
       await syncAndReloadEdgeContacts(account)
@@ -38,6 +59,42 @@ export const EdgeContactsScene: React.FC<Props> = () => {
     [account],
     'EdgeContactsScene'
   )
+
+  React.useEffect(() => {
+    if (setKeepOpen != null) setKeepOpen(isSearching)
+    if (isSearching && textInputRef.current != null) {
+      textInputRef.current.focus()
+    }
+    if (!isSearching && textInputRef.current != null) {
+      textInputRef.current.blur()
+    }
+  }, [isSearching, setKeepOpen])
+
+  const filteredContacts = React.useMemo(
+    () => contacts.filter(contact => contactMatchesSearch(contact, searchText)),
+    [contacts, searchText]
+  )
+
+  const handleStartSearching = useHandler(() => {
+    setIsSearching(true)
+  })
+
+  const handleDoneSearching = useHandler(() => {
+    setSearchText('')
+    setIsSearching(false)
+  })
+
+  const handleChangeText = useHandler((value: string) => {
+    setSearchText(value)
+  })
+
+  const handleFooterLayoutHeight = useHandler((height: number) => {
+    setFooterHeight(height)
+  })
+
+  const handleSubmitEditing = useHandler(() => {
+    Keyboard.dismiss()
+  })
 
   const handleAddContact = useHandler(async () => {
     await Airship.show<EdgeContact | undefined>(bridge => (
@@ -83,35 +140,105 @@ export const EdgeContactsScene: React.FC<Props> = () => {
     )
   }
 
-  return (
-    <SceneWrapper>
-      <FlatList
-        contentContainerStyle={styles.listContent}
-        data={contacts}
-        keyExtractor={item => item.id}
-        keyboardShouldPersistTaps="handled"
-        renderItem={renderContact}
-        scrollIndicatorInsets={SCROLL_INDICATOR_INSET_FIX}
-        ListEmptyComponent={
-          <Space aroundRem={0.5}>
-            <EdgeText>{lstrings.choose_recipient_empty}</EdgeText>
-          </Space>
-        }
-        ListFooterComponent={
-          <Space aroundRem={0.5} bottomRem={1}>
-            <EdgeButton
-              type="secondary"
-              label={`+ ${lstrings.choose_recipient_add_contact}`}
-              onPress={handleAddContact}
+  const renderFooter: FooterRender = React.useCallback(
+    sceneWrapperInfo => {
+      return (
+        <SceneFooterWrapper
+          key="EdgeContactsScene-SearchFooter"
+          sceneWrapperInfo={sceneWrapperInfo}
+          onLayoutHeight={handleFooterLayoutHeight}
+        >
+          <View style={styles.privacyBox}>
+            <ShieldCheckmarkIcon
+              size={theme.rem(1.25)}
+              color={theme.iconTappable}
             />
-          </Space>
-        }
-      />
+            <View style={styles.privacyText}>
+              <SmallText>{lstrings.edge_contact_privacy}</SmallText>
+            </View>
+          </View>
+          <SimpleTextInput
+            returnKeyType="search"
+            placeholder={lstrings.edge_contacts_search}
+            onChangeText={handleChangeText}
+            value={searchText}
+            active={isSearching}
+            onCancel={handleDoneSearching}
+            onFocus={handleStartSearching}
+            onSubmitEditing={handleSubmitEditing}
+            ref={textInputRef}
+            iconComponent={SearchIconAnimated}
+            scale={footerHeight == null ? undefined : footerOpenRatio}
+            horizontalRem={1}
+            verticalRem={0.5}
+            autoCorrect={false}
+          />
+        </SceneFooterWrapper>
+      )
+    },
+    [
+      footerHeight,
+      footerOpenRatio,
+      handleChangeText,
+      handleDoneSearching,
+      handleFooterLayoutHeight,
+      handleStartSearching,
+      handleSubmitEditing,
+      isSearching,
+      searchText,
+      styles.privacyBox,
+      styles.privacyText,
+      theme
+    ]
+  )
+
+  return (
+    <SceneWrapper
+      avoidKeyboard
+      footerHeight={footerHeight}
+      renderFooter={renderFooter}
+    >
+      {({ insetStyle, undoInsetStyle }) => (
+        <View style={[styles.listStack, undoInsetStyle]}>
+          <FlatList
+            contentContainerStyle={{
+              ...insetStyle,
+              ...styles.listContent,
+              paddingBottom: (insetStyle.paddingBottom ?? 0) + theme.rem(1)
+            }}
+            data={filteredContacts}
+            keyExtractor={item => item.id}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
+            renderItem={renderContact}
+            scrollIndicatorInsets={SCROLL_INDICATOR_INSET_FIX}
+            ListEmptyComponent={
+              <Space aroundRem={0.5}>
+                <EdgeText>{lstrings.choose_recipient_empty}</EdgeText>
+              </Space>
+            }
+            ListFooterComponent={
+              isSearching ? null : (
+                <Space aroundRem={0.5} bottomRem={0.5}>
+                  <EdgeButton
+                    type="secondary"
+                    label={`+ ${lstrings.choose_recipient_add_contact}`}
+                    onPress={handleAddContact}
+                  />
+                </Space>
+              )
+            }
+          />
+        </View>
+      )}
     </SceneWrapper>
   )
 }
 
 const getStyles = cacheStyles((theme: Theme) => ({
+  listStack: {
+    flexGrow: 1
+  },
   listContent: {
     flexGrow: 1,
     paddingTop: theme.rem(0.5)
@@ -127,5 +254,18 @@ const getStyles = cacheStyles((theme: Theme) => ({
   avatarText: {
     color: theme.backgroundGradientColors[0],
     textAlign: 'center'
+  },
+  privacyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.rem(0.5),
+    backgroundColor: theme.cardBaseColor,
+    borderRadius: theme.rem(0.5),
+    marginHorizontal: theme.rem(1),
+    marginTop: theme.rem(0.5),
+    padding: theme.rem(0.75)
+  },
+  privacyText: {
+    flex: 1
   }
 }))

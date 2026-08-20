@@ -1459,6 +1459,7 @@ const strings = {
   edge_contact_delete_body:
     'Remove this contact from your private Edge directory?',
   edge_contacts_settings_title: 'Contacts',
+  edge_contacts_search: 'Search Contacts',
   edge_contact_primary: 'Primary',
   edge_contact_name_required: 'Enter a name',
   edge_contact_identifier_required: 'Add at least one address',
