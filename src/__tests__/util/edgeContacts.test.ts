@@ -161,6 +161,29 @@ describe('edge contacts store', () => {
     expect(getCachedEdgeContacts().map(item => item.name)).toEqual(['Alice'])
   })
 
+  it('ignores a stale legacy blob when per-contact items exist', async () => {
+    const account = makeAccount()
+    await account.dataStore.setItem(
+      EDGE_CONTACTS_STORE_ID,
+      EDGE_CONTACTS_LEGACY_KEY,
+      JSON.stringify([
+        contact({ id: 'legacy-1', name: 'Legacy', updatedAt: 5 }),
+        contact({ id: 'ghost', name: 'Ghost', updatedAt: 5 })
+      ])
+    )
+    await account.dataStore.setItem(
+      EDGE_CONTACTS_STORE_ID,
+      edgeContactItemId('legacy-1'),
+      JSON.stringify(contact({ id: 'legacy-1', name: 'Legacy', updatedAt: 5 }))
+    )
+
+    await loadEdgeContacts(account, { force: true })
+    expect(getCachedEdgeContacts().map(item => item.name)).toEqual(['Legacy'])
+    expect(
+      account._stores.get(EDGE_CONTACTS_STORE_ID)?.has(EDGE_CONTACTS_LEGACY_KEY)
+    ).toBe(false)
+  })
+
   it('migrates the legacy contacts blob to per-id items', async () => {
     const account = makeAccount()
     await account.dataStore.setItem(

@@ -13,7 +13,10 @@ import {
   pickContactSendUri,
   primaryIdentifier
 } from '../../util/contacts/match'
-import { loadEdgeContacts, useEdgeContacts } from '../../util/contacts/store'
+import {
+  syncAndReloadEdgeContacts,
+  useEdgeContacts
+} from '../../util/contacts/store'
 import type { EdgeContact } from '../../util/contacts/types'
 import {
   type RecipientPurpose,
@@ -64,7 +67,7 @@ export const ChooseRecipientModal: React.FC<Props> = props => {
 
   useAsyncEffect(
     async () => {
-      await loadEdgeContacts(account)
+      await syncAndReloadEdgeContacts(account)
     },
     [account],
     'ChooseRecipientModal'

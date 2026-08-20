@@ -5,9 +5,8 @@ import { AppState, type AppStateStatus } from 'react-native'
 import { useAsyncEffect } from '../../hooks/useAsyncEffect'
 import { useHandler } from '../../hooks/useHandler'
 import {
-  loadEdgeContacts,
-  reloadEdgeContacts,
-  resetEdgeContactsStore
+  resetEdgeContactsStore,
+  syncAndReloadEdgeContacts
 } from '../../util/contacts/store'
 
 interface Props {
@@ -23,7 +22,7 @@ export const EdgeContactsService: React.FC<Props> = props => {
 
   useAsyncEffect(
     async () => {
-      await loadEdgeContacts(account, { force: true })
+      await syncAndReloadEdgeContacts(account)
       return () => {
         resetEdgeContactsStore()
       }
@@ -38,8 +37,8 @@ export const EdgeContactsService: React.FC<Props> = props => {
     })
   }, [account])
 
-  const handleReload = useHandler(() => {
-    reloadEdgeContacts(account).catch(() => {})
+  const handleReload = useHandler(async () => {
+    await syncAndReloadEdgeContacts(account)
   })
 
   // Account repo sync updates wallet state; use that as a contacts refresh cue.
@@ -47,7 +46,9 @@ export const EdgeContactsService: React.FC<Props> = props => {
     let timer: ReturnType<typeof setTimeout> | null = null
     const cleanup = account.watch('currencyWallets', () => {
       if (timer != null) clearTimeout(timer)
-      timer = setTimeout(handleReload, 500)
+      timer = setTimeout(() => {
+        handleReload().catch(() => {})
+      }, 500)
     })
     return () => {
       cleanup()
@@ -59,7 +60,7 @@ export const EdgeContactsService: React.FC<Props> = props => {
     let previous: AppStateStatus = AppState.currentState
     const subscription = AppState.addEventListener('change', next => {
       if (/inactive|background/.exec(previous) != null && next === 'active') {
-        handleReload()
+        handleReload().catch(() => {})
       }
       previous = next
     })

@@ -8,7 +8,10 @@ import { lstrings } from '../../locales/strings'
 import { useSelector } from '../../types/reactRedux'
 import type { EdgeAppSceneProps } from '../../types/routerTypes'
 import { primaryIdentifier } from '../../util/contacts/match'
-import { loadEdgeContacts, useEdgeContacts } from '../../util/contacts/store'
+import {
+  syncAndReloadEdgeContacts,
+  useEdgeContacts
+} from '../../util/contacts/store'
 import type { EdgeContact } from '../../util/contacts/types'
 import { truncateString } from '../../util/utils'
 import { EdgeButton } from '../buttons/EdgeButton'
@@ -30,7 +33,7 @@ export const EdgeContactsScene: React.FC<Props> = () => {
 
   useAsyncEffect(
     async () => {
-      await loadEdgeContacts(account)
+      await syncAndReloadEdgeContacts(account)
     },
     [account],
     'EdgeContactsScene'

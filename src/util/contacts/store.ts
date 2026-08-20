@@ -112,7 +112,8 @@ const deleteContactItem = async (
 
 interface ReadResult {
   contacts: EdgeContacts
-  hadLegacy: boolean
+  hadLegacyKey: boolean
+  hasPerContactItems: boolean
 }
 
 const readContactsFromStore = async (
@@ -126,11 +127,11 @@ const readContactsFromStore = async (
   }
 
   const perContact: EdgeContact[] = []
-  let hadLegacy = false
+  let hadLegacyKey = false
 
   for (const itemId of itemIds) {
     if (itemId === EDGE_CONTACTS_LEGACY_KEY) {
-      hadLegacy = true
+      hadLegacyKey = true
       continue
     }
     if (!isEdgeContactItemId(itemId)) continue
@@ -146,23 +147,43 @@ const readContactsFromStore = async (
     }
   }
 
-  let legacy: EdgeContacts = []
-  if (hadLegacy || itemIds.length === 0) {
-    try {
-      const text = await account.dataStore.getItem(
-        EDGE_CONTACTS_STORE_ID,
-        EDGE_CONTACTS_LEGACY_KEY
-      )
-      legacy = asMaybe(asEdgeContacts)(JSON.parse(text)) ?? []
-      if (legacy.length > 0) hadLegacy = true
-    } catch {
-      // No legacy blob.
+  // Per-contact files are authoritative once any exist. A stale legacy blob
+  // must not resurrect contacts deleted on another device.
+  if (perContact.length > 0) {
+    return {
+      contacts: sortContacts(perContact),
+      hadLegacyKey,
+      hasPerContactItems: true
     }
   }
 
+  let legacy: EdgeContacts = []
+  try {
+    const text = await account.dataStore.getItem(
+      EDGE_CONTACTS_STORE_ID,
+      EDGE_CONTACTS_LEGACY_KEY
+    )
+    legacy = asMaybe(asEdgeContacts)(JSON.parse(text)) ?? []
+    if (legacy.length > 0) hadLegacyKey = true
+  } catch {
+    // No legacy blob.
+  }
+
   return {
-    contacts: mergeEdgeContacts(perContact, legacy),
-    hadLegacy
+    contacts: sortContacts(legacy),
+    hadLegacyKey,
+    hasPerContactItems: false
+  }
+}
+
+const deleteLegacyBlob = async (account: EdgeAccount): Promise<void> => {
+  try {
+    await account.dataStore.deleteItem(
+      EDGE_CONTACTS_STORE_ID,
+      EDGE_CONTACTS_LEGACY_KEY
+    )
+  } catch (error) {
+    if (!isClosedDataStoreError(error)) throw error
   }
 }
 
@@ -217,15 +238,17 @@ export const loadEdgeContacts = async (
 
   cachedAccountId = account.id
   const pending = (async () => {
-    const { contacts: diskContacts, hadLegacy } = await readContactsFromStore(
-      account
-    )
+    const {
+      contacts: diskContacts,
+      hadLegacyKey,
+      hasPerContactItems
+    } = await readContactsFromStore(account)
 
-    // Disk (post-sync) is authoritative for membership so deletes from other
-    // devices stick. Per-item files already last-write-win on conflicts.
     const next = sortContacts(diskContacts)
 
-    if (hadLegacy) {
+    if (hasPerContactItems && hadLegacyKey) {
+      await deleteLegacyBlob(account)
+    } else if (!hasPerContactItems && next.length > 0) {
       await migrateLegacyContacts(account, next)
     }
 
@@ -247,6 +270,17 @@ export const reloadEdgeContacts = async (
   account: EdgeAccount
 ): Promise<void> => {
   await loadEdgeContacts(account, { force: true })
+}
+
+/**
+ * Sync the account repo, then reload contacts from disk.
+ */
+export const syncAndReloadEdgeContacts = async (
+  account: EdgeAccount
+): Promise<void> => {
+  await account.waitForAllWallets()
+  await account.sync()
+  await reloadEdgeContacts(account)
 }
 
 export const saveEdgeContact = async (
