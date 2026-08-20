@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it } from '@jest/globals'
 import type { EdgeAccount } from 'edge-core-js'
 
 import {
+  contactHasFioHandle,
   contactMatchesSearch,
   detectIdentifierType,
+  pickContactFioHandle,
   pickContactSendUri
 } from '../../util/contacts/match'
 import {
@@ -127,6 +129,19 @@ describe('pickContactSendUri', () => {
     expect(pickContactSendUri(mixed, { pluginId: 'ethereum' })).toBe(
       'marco@edge'
     )
+  })
+})
+
+describe('contactHasFioHandle', () => {
+  it('detects FIO identifiers', () => {
+    const withFio = contact({
+      name: 'Bob',
+      identifiers: [{ id: 'f1', type: 'fio', value: 'bob@edge' }]
+    })
+    const withoutFio = contact({ name: 'Ann' })
+    expect(contactHasFioHandle(withFio)).toBe(true)
+    expect(contactHasFioHandle(withoutFio)).toBe(false)
+    expect(pickContactFioHandle(withFio)).toBe('bob@edge')
   })
 })
 

@@ -37,6 +37,14 @@ export const contactMatchesSearch = (
   )
 }
 
+export const contactHasFioHandle = (contact: EdgeContact): boolean =>
+  contact.identifiers.some(item => item.type === 'fio')
+
+export const pickContactFioHandle = (
+  contact: EdgeContact
+): string | undefined =>
+  contact.identifiers.find(item => item.type === 'fio')?.value
+
 export const pickContactSendUri = (
   contact: EdgeContact,
   opts: {

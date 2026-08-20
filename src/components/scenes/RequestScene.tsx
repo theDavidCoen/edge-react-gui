@@ -718,6 +718,24 @@ export class RequestSceneComponent extends React.Component<
     const { walletId, tokenId } = route.params
     if (account == null || wallet?.id == null || currencyCode == null) return
 
+    if (!this.props.isConnected) {
+      showError(lstrings.fio_network_alert_text, { trackError: false })
+      return
+    }
+    if (!this.props.fioAddressesExist) {
+      showToast(
+        `${lstrings.title_register_fio_address}. ${lstrings.fio_request_by_fio_address_error_no_address}`
+      )
+      return
+    }
+    if (
+      this.state.amounts == null ||
+      zeroString(this.state.amounts?.nativeAmount)
+    ) {
+      showToast(lstrings.fio_request_by_fio_address_error_invalid_amount)
+      return
+    }
+
     const recipient = await Airship.show<string | undefined>(bridge => (
       <ChooseRecipientModal
         bridge={bridge}
@@ -738,24 +756,6 @@ export class RequestSceneComponent extends React.Component<
           )
         : false
     if (isFio !== true) return
-
-    if (!this.props.isConnected) {
-      showError(lstrings.fio_network_alert_text, { trackError: false })
-      return
-    }
-    if (!this.props.fioAddressesExist) {
-      showToast(
-        `${lstrings.title_register_fio_address}. ${lstrings.fio_request_by_fio_address_error_no_address}`
-      )
-      return
-    }
-    if (
-      this.state.amounts == null ||
-      zeroString(this.state.amounts?.nativeAmount)
-    ) {
-      showToast(lstrings.fio_request_by_fio_address_error_invalid_amount)
-      return
-    }
 
     navigation.navigate('fioRequestConfirmation', {
       amounts: this.state.amounts,

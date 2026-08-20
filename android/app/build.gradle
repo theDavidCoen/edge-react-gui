@@ -95,7 +95,7 @@ android {
         applicationId "app.edge.contacts"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 26081801
+        versionCode 26082002
         versionName "4.50.2"
 
         // Edge addition:
