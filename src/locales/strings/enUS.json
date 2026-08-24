@@ -1719,6 +1719,8 @@
   "notifications_pinned": "Pinned",
   "notifications_recent": "Recent",
   "notifications_none": "You're all caught up!",
+  "notifications_clear_all": "Clear All",
+  "notifications_clear_all_message": "Are you sure you want to clear all notifications?",
   "swap": "Swap",
   "update_available": "Update Available",
   "enter_email": "Enter Email",

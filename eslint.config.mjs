@@ -302,7 +302,6 @@ export default [
 
       'src/components/scenes/ManageTokensScene.tsx',
 
-      'src/components/scenes/NotificationCenterScene.tsx',
       'src/components/scenes/NotificationScene.tsx',
 
       'src/components/scenes/OtpSettingsScene.tsx',

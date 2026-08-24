@@ -15,20 +15,22 @@ import { config } from '../../theme/appConfig'
 import { useDispatch, useSelector } from '../../types/reactRedux'
 import type { EdgeAppSceneProps, NavigationBase } from '../../types/routerTypes'
 import { getThemedIconUri } from '../../util/CdnUris.ts'
+import { triggerHaptic } from '../../util/haptic'
 import { showOtpReminderModal } from '../../util/otpReminder.tsx'
 import { openBrowserUri } from '../../util/WebUtils.ts'
 import { SceneWrapper } from '../common/SceneWrapper'
 import { SectionHeader } from '../common/SectionHeader'
+import { ButtonsModal } from '../modals/ButtonsModal'
 import { PasswordReminderModal } from '../modals/PasswordReminderModal'
 import { NotificationCenterRow } from '../notification/NotificationCenterCard'
-import { Airship } from '../services/AirshipInstance'
+import { Airship, showError } from '../services/AirshipInstance'
 import { updateNotificationInfo } from '../services/NotificationService.ts'
 import { cacheStyles, type Theme, useTheme } from '../services/ThemeContext'
 import { EdgeText } from '../themed/EdgeText.tsx'
 
 type Props = EdgeAppSceneProps<'notificationCenter'>
 
-export const NotificationCenterScene = (props: Props) => {
+export const NotificationCenterScene: React.FC<Props> = props => {
   const { navigation } = props
   const theme = useTheme()
   const styles = getStyles(theme)
@@ -88,6 +90,51 @@ export const NotificationCenterScene = (props: Props) => {
         notifState[b].dateReceived.valueOf() -
         notifState[a].dateReceived.valueOf()
     )
+
+  const handleClearAllPress = useHandler(() => {
+    triggerHaptic('impactLight')
+    Airship.show<string | undefined>(bridge => (
+      <ButtonsModal
+        bridge={bridge}
+        title={lstrings.notifications_clear_all}
+        message={lstrings.notifications_clear_all_message}
+        buttons={{
+          yes: {
+            label: lstrings.notifications_clear_all,
+            type: 'secondary',
+            onPress: async () => {
+              for (const key of recentNotifKeys) {
+                if (key.includes('promoCard-')) {
+                  await writeAccountNotifInfo(account, key, {
+                    isCompleted: true,
+                    isBannerHidden: true
+                  })
+                } else {
+                  await updateNotificationInfo(account, key, false)
+                  if (key.includes('newToken')) {
+                    const walletId = notifState[key].params?.walletId
+                    if (walletId != null) {
+                      dispatch({
+                        type: 'CORE/DISMISS_NEW_TOKENS',
+                        data: { walletId }
+                      })
+                    }
+                  }
+                }
+              }
+              return true
+            }
+          },
+          no: {
+            label: lstrings.string_cancel_cap,
+            type: 'tertiary'
+          }
+        }}
+      />
+    )).catch((error: unknown) => {
+      showError(error)
+    })
+  })
 
   // TODO: Change state handling so animations somehow work, without relying
   // on the cards themselves to animate in/out.
@@ -174,7 +221,11 @@ export const NotificationCenterScene = (props: Props) => {
   const recentNotifs =
     recentNotifKeys.length === 0 ? null : (
       <>
-        <SectionHeader leftTitle={lstrings.notifications_recent} />
+        <SectionHeader
+          leftTitle={lstrings.notifications_recent}
+          rightNode={lstrings.notifications_clear_all}
+          onRightPress={handleClearAllPress}
+        />
         <View style={styles.divider} />
         {recentNotifKeys.map(key => {
           const completeNotif = (key: string) => async () => {
@@ -204,7 +255,7 @@ export const NotificationCenterScene = (props: Props) => {
             }
             const { name, currencyInfo } = wallets[walletId]
 
-            const handleCloseNewToken = async () => {
+            const handleCloseNewToken = async (): Promise<void> => {
               // Since this isn't a priority notification, we can just fully
               // complete it here
               await completeNotif(key)()
@@ -213,7 +264,7 @@ export const NotificationCenterScene = (props: Props) => {
                 data: { walletId }
               })
             }
-            const handlePressNewToken = async () => {
+            const handlePressNewToken = async (): Promise<void> => {
               await handleCloseNewToken()
               navigation.navigate('manageTokens', {
                 walletId,
@@ -257,7 +308,7 @@ export const NotificationCenterScene = (props: Props) => {
             )
               return null
 
-            const handlePromoPress = async () => {
+            const handlePromoPress = async (): Promise<void> => {
               try {
                 // If it's already marked as expired or if validation fails, just open the URL
                 // The URL could be a download link, a web page, etc.
