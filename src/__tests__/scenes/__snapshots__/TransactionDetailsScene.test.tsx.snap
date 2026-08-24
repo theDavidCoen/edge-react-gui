@@ -1209,7 +1209,7 @@ exports[`TransactionDetailsScene should render 1`] = `
                       ]
                     }
                   >
-                    8/31/2018, 2:59:40 PM
+                    31/08/2018, 14:59:40
                   </Text>
                 </View>
               </View>
@@ -4194,7 +4194,7 @@ exports[`TransactionDetailsScene should render with negative nativeAmount and fi
                       ]
                     }
                   >
-                    8/31/2018, 2:59:40 PM
+                    31/08/2018, 14:59:40
                   </Text>
                 </View>
               </View>

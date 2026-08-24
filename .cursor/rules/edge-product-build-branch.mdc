@@ -1,0 +1,23 @@
+---
+description: Edge product APK builds must use that product’s dedicated branch
+alwaysApply: true
+---
+
+# Edge — product branch discipline for builds
+
+Before **any** Edge product build or device install from this repo:
+
+1. **Identify the product** (Wallet, Persona, Contacts, …).
+2. **Checkout only that product’s branch** — never build one product while on another’s branch.
+3. **Verify** `APP_CONFIG`, `strings.xml` `app_name`, and `applicationId` / bundle id match that product.
+4. If wrong: stop, switch branch, re-check, then build.
+
+## Product ↔ branch (`edge-react-gui`)
+
+| Product | Branch | `APP_CONFIG` | Package |
+|---------|--------|--------------|---------|
+| Edge Wallet | `master` / `develop` | `edge` | `co.edgesecure.app` |
+| Edge Persona | `david/edgepersona` | `persona` | `co.edgesecure.persona` |
+| Edge Contacts | `david/contacts` | `contacts` (as configured) | `app.edge.contacts` |
+
+**2026-08-24:** Persona built off-branch → launcher **Edge Contacts** on Persona package. Always match branch to product.
