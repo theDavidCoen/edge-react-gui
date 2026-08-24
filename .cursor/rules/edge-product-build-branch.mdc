@@ -20,4 +20,11 @@ Before **any** Edge product build or device install from this repo:
 | Edge Persona | `david/edgepersona` | `persona` | `co.edgesecure.persona` |
 | Edge Contacts | `david/contacts` | `contacts` (as configured) | `app.edge.contacts` |
 
+### Parallel worktrees
+
+- Primary clone (Contacts etc.): `~/Documenti/Edge/edge-react-gui`
+- **Persona only:** `~/Documenti/Edge/edge-react-gui-persona` (`david/edgepersona`)
+
+Do Persona work/builds in the persona worktree so Contacts chats do not steal the branch.
+
 **2026-08-24:** Persona built off-branch → launcher **Edge Contacts** on Persona package. Always match branch to product.

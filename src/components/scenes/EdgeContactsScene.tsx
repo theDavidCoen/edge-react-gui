@@ -1,7 +1,5 @@
 import * as React from 'react'
 import { FlatList, View } from 'react-native'
-import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller'
-import Animated, { useAnimatedStyle } from 'react-native-reanimated'
 
 import { SCROLL_INDICATOR_INSET_FIX } from '../../constants/constantSettings'
 import { useAsyncEffect } from '../../hooks/useAsyncEffect'
@@ -33,25 +31,22 @@ import { SelectableRow } from '../themed/SelectableRow'
 
 interface Props extends EdgeAppSceneProps<'edgeContacts'> {}
 
+interface ContactsPrivacyDockProps {
+  onAddContact: () => void | Promise<void>
+}
+
 /**
- * Privacy notice for the Contacts dock. SceneWrapper lifts the dock with the
- * keyboard; we translate it back down so it stays under the keyboard instead
- * of overlapping Search.
+ * Sticky privacy notice + add-contact control. Hidden while searching so the
+ * list and Search footer keep the keyboard space.
  */
-const ContactsPrivacyDock: React.FC = () => {
+const ContactsPrivacyDock: React.FC<ContactsPrivacyDockProps> = props => {
+  const { onAddContact } = props
   const theme = useTheme()
   const styles = getStyles(theme)
-  const { height: keyboardHeightDiff } = useReanimatedKeyboardAnimation()
-
-  const animatedStyle = useAnimatedStyle(() => {
-    const keyboardHeight =
-      keyboardHeightDiff.value < 0 ? -keyboardHeightDiff.value : 0
-    return { transform: [{ translateY: keyboardHeight }] }
-  })
 
   return (
-    <Animated.View pointerEvents="none" style={animatedStyle}>
-      <View style={styles.privacyBox}>
+    <View style={styles.privacyBox}>
+      <View style={styles.privacyRow}>
         <ShieldCheckmarkIcon
           size={theme.rem(1.25)}
           color={theme.iconTappable}
@@ -60,7 +55,12 @@ const ContactsPrivacyDock: React.FC = () => {
           <SmallText>{lstrings.edge_contact_privacy}</SmallText>
         </View>
       </View>
-    </Animated.View>
+      <EdgeButton
+        type="secondary"
+        label={`+ ${lstrings.choose_recipient_add_contact}`}
+        onPress={onAddContact}
+      />
+    </View>
   )
 }
 
@@ -179,10 +179,14 @@ export const EdgeContactsScene: React.FC<Props> = () => {
       avoidKeyboard
       footerHeight={footerHeight}
       renderFooter={renderFooter}
-      dockProps={{
-        keyboardVisibleOnly: false,
-        children: <ContactsPrivacyDock />
-      }}
+      dockProps={
+        isSearching
+          ? undefined
+          : {
+              keyboardVisibleOnly: false,
+              children: <ContactsPrivacyDock onAddContact={handleAddContact} />
+            }
+      }
     >
       {({ insetStyle, undoInsetStyle }) => (
         <View style={[styles.listStack, undoInsetStyle]}>
@@ -203,17 +207,6 @@ export const EdgeContactsScene: React.FC<Props> = () => {
               <Space aroundRem={0.5}>
                 <EdgeText>{lstrings.choose_recipient_empty}</EdgeText>
               </Space>
-            }
-            ListFooterComponent={
-              isSearching ? null : (
-                <Space aroundRem={0.5} bottomRem={0.5}>
-                  <EdgeButton
-                    type="secondary"
-                    label={`+ ${lstrings.choose_recipient_add_contact}`}
-                    onPress={handleAddContact}
-                  />
-                </Space>
-              )
             }
           />
         </View>
@@ -239,14 +232,17 @@ const getStyles = cacheStyles((theme: Theme) => ({
     textAlign: 'center'
   },
   privacyBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: theme.rem(0.5),
-    backgroundColor: theme.cardBaseColor,
+    backgroundColor: theme.modalLikeBackground,
     borderRadius: theme.rem(0.5),
     marginHorizontal: theme.rem(1),
     marginBottom: theme.rem(0.5),
     padding: theme.rem(0.75)
+  },
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.rem(0.5)
   },
   privacyText: {
     flex: 1
